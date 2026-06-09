@@ -3,6 +3,214 @@
   "$id": "https://inward-eyes.local/schemas/research_report.schema.json",
   "title": "ResearchReport",
   "type": "object",
-  "description": "Placeholder schema for M3. Not enforced in M2.",
-  "x_status": "planned"
+  "required": [
+    "schema_version",
+    "task_type",
+    "topic",
+    "generated_at",
+    "sources",
+    "claims",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "const": "browser-research"
+    },
+    "topic": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "url",
+          "title",
+          "source_type",
+          "accessed_at",
+          "evidence_status",
+          "evidence_path",
+          "screenshot_policy",
+          "content_scope"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "canonical_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "site_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "page_type": {
+            "type": "string"
+          },
+          "accessed_at": {
+            "type": "string"
+          },
+          "requires_login": {
+            "type": "boolean"
+          },
+          "capture_method": {
+            "type": "string"
+          },
+          "evidence_status": {
+            "type": "string"
+          },
+          "evidence_path": {
+            "type": "string"
+          },
+          "screenshot_policy": {
+            "type": "object"
+          },
+          "content_scope": {
+            "type": "object"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_id",
+          "text",
+          "claim_type",
+          "is_key_finding",
+          "source_ids",
+          "support",
+          "single_source",
+          "confidence"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "inference",
+              "unknown"
+            ]
+          },
+          "is_key_finding": {
+            "type": "boolean"
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "support": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "source_id",
+                "support_type"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string"
+                },
+                "support_type": {
+                  "type": "string",
+                  "enum": [
+                    "direct",
+                    "inferred"
+                  ]
+                },
+                "excerpt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "single_source": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
 }

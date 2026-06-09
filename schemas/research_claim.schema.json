@@ -3,6 +3,89 @@
   "$id": "https://inward-eyes.local/schemas/research_claim.schema.json",
   "title": "ResearchClaim",
   "type": "object",
-  "description": "Placeholder schema for M3. Not enforced in M2.",
-  "x_status": "planned"
+  "required": [
+    "claim_id",
+    "text",
+    "claim_type",
+    "is_key_finding",
+    "source_ids",
+    "support",
+    "single_source",
+    "confidence"
+  ],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim_type": {
+      "type": "string",
+      "enum": [
+        "fact",
+        "inference",
+        "unknown"
+      ]
+    },
+    "is_key_finding": {
+      "type": "boolean"
+    },
+    "source_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "support": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "support_type"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "support_type": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "inferred"
+            ]
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "single_source": {
+      "type": "boolean"
+    },
+    "confidence": {
+      "type": "string"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": true
 }

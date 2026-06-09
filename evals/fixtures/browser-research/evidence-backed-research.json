@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "topic": "M3 browser-research minimum viable workflow",
+  "question": "What should Inward Eyes implement immediately after the M0-M2 page-to-md baseline?",
+  "summary": "The next viable step is a source-backed research workflow centered on a claim ledger, source records, and claim coverage validation.",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://inward-eyes.local/planning/m3-m5",
+      "canonical_url": "https://inward-eyes.local/planning/m3-m5",
+      "title": "M3-M5 browser-research, price-compare, and Pluginization",
+      "site_name": "Inward Eyes",
+      "source_type": "project_plan",
+      "page_type": "docs",
+      "accessed_at": "2026-06-09T00:00:00Z",
+      "requires_login": false,
+      "capture_method": "synthetic_fixture",
+      "evidence_status": "source_record_present",
+      "content_scope": {
+        "included": [
+          "browser_research_goal",
+          "required_outputs",
+          "acceptance_criteria"
+        ],
+        "excluded": [
+          "price_compare_details",
+          "plugin_distribution_details"
+        ]
+      },
+      "independence_note": "Project planning source; not independent external confirmation.",
+      "notes": "Defines M3 report, claims, sources, and validation outputs."
+    },
+    {
+      "source_id": "S002",
+      "url": "https://inward-eyes.local/contracts/schemas-and-validation",
+      "canonical_url": "https://inward-eyes.local/contracts/schemas-and-validation",
+      "title": "Schemas and Validation Contract",
+      "site_name": "Inward Eyes",
+      "source_type": "project_contract",
+      "page_type": "docs",
+      "accessed_at": "2026-06-09T00:00:00Z",
+      "requires_login": false,
+      "capture_method": "synthetic_fixture",
+      "evidence_status": "source_record_present",
+      "content_scope": {
+        "included": [
+          "required_artifact_pattern",
+          "browser_research_validation_rules"
+        ],
+        "excluded": [
+          "page_to_md_details",
+          "price_compare_details"
+        ]
+      },
+      "independence_note": "Durable contract source; same project authority as planning.",
+      "notes": "Requires structured JSON before Markdown and consistency checks."
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "M3 browser-research should produce reports where key facts map to claim ledger entries and source evidence.",
+      "claim_type": "fact",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Produce source-backed research reports where every key fact maps to a claim ledger entry and source evidence."
+        }
+      ],
+      "single_source": true,
+      "confidence": "high",
+      "notes": "Single-source because the planning doc is the source of milestone intent."
+    },
+    {
+      "claim_id": "C002",
+      "text": "The research workflow should validate consistency between claims, sources, and the rendered report.",
+      "claim_type": "fact",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "claims.json, sources.csv, and report.md agree."
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "Sources table and claim ledger agree."
+        }
+      ],
+      "single_source": false,
+      "confidence": "high"
+    },
+    {
+      "claim_id": "C003",
+      "text": "A deterministic local runner is a reasonable first implementation because browser capture remains optional and outside the product core.",
+      "claim_type": "inference",
+      "is_key_finding": true,
+      "source_ids": [
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S002",
+          "support_type": "inferred",
+          "excerpt": "Capture source/evidence, produce schema-shaped JSON, validate JSON, then render human-readable artifacts."
+        }
+      ],
+      "single_source": true,
+      "confidence": "medium",
+      "notes": "This is an implementation inference from the contract, not a directly stated requirement."
+    }
+  ],
+  "unknowns": [
+    {
+      "unknown_id": "U001",
+      "text": "The exact stable plugin distribution workflow remains unsettled.",
+      "related_source_ids": [
+        "S001"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Distribution workflow is deferred until the plugin package is stable."
+        }
+      ],
+      "reason": "M5 distribution is planned but not implemented in M3."
+    }
+  ],
+  "warnings": []
+}

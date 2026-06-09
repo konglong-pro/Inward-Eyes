@@ -37,6 +37,15 @@ page-capture JSON:
 - safety classifier
 - synthetic eval fixtures
 
+M3 `browser-research` MVP is complete. The first slice supports local research
+input JSON, claim ledger validation, source records, rendered reports, sources
+CSV, source notes, and synthetic pass/fail eval fixtures.
+
+M4-M5 `price-compare` and pluginization MVP is complete. The first price slice
+supports local price input JSON, separated product specs and price components,
+anomalies, CSV/Markdown/chart rendering, screenshot-policy validation, and a
+validated local plugin containing all three skills.
+
 Browser/MCP capture is not implemented yet. Real logged-in browser capture,
 X-like thread capture, forum capture, and ecommerce browser capture remain
 future hardening work.
@@ -49,6 +58,8 @@ Read:
 - `docs/planning/archive/m0-m2-closeout.md` for the completed M0-M2 closeout.
 - `docs/architecture.md` for system design.
 - `docs/testing.md` for testing and eval strategy.
+- `docs/pluginization.md` for current local plugin packaging boundaries.
+- `.github/workflows/ci.yml` for repository-contained CI checks.
 
 ## Planned Repository Shape
 
@@ -74,7 +85,11 @@ Run from the repository root.
 - Install: no install step yet; first implementation uses Python standard library only.
 - Compile check: see `docs/testing.md`.
 - Run evals: `python evals/run_eval.py`
+- Run research evals: `python evals/run_research_eval.py`
+- Run price evals: `python evals/run_price_eval.py`
 - Validate one page-to-md run: `python scripts/validation/validate_page_to_md.py <run_dir>`
+- Validate one browser-research run: `python scripts/validation/validate_browser_research.py <run_dir>`
+- Validate one price-compare run: `python scripts/validation/validate_price_compare.py <run_dir>`
 - Validate JSON against schema: `python scripts/validation/validate_json_schema.py --schema <schema-path> --json <json-path>`
 - Validate plugin: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
 - Build/package plugin: not implemented yet.

@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "title": "Low confidence eligibility regression",
+  "region": "US",
+  "currency": "USD",
+  "product": {
+    "target_name": "Example Tablet",
+    "required_specs": {
+      "storage": "64GB",
+      "color": "Silver"
+    }
+  },
+  "candidates": [],
+  "quotes": [
+    {
+      "quote_id": "Q001",
+      "source_id": "S001",
+      "url": "https://shop.example.test/product/example-tablet",
+      "title": "Example Tablet",
+      "platform": "ExampleShop",
+      "region": "US",
+      "currency": "USD",
+      "product_identity": {
+        "product_name": "Example Tablet",
+        "model_number": "TAB-64",
+        "specs": {
+          "storage": "64GB",
+          "color": "Silver"
+        }
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 399.0,
+        "sale_price": 299.0,
+        "coupon_price": null,
+        "shipping_fee": 0.0,
+        "estimated_total": 299.0
+      },
+      "match_confidence": 0.4,
+      "selected_specs_confirmed": true,
+      "screenshot_fixture": true
+    }
+  ],
+  "warnings": []
+}

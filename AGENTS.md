@@ -36,10 +36,18 @@ Run from `E:\Inward Eyes`.
 
 - Install: no project install step yet; first implementation uses Python standard library only.
 - Compile check: `python -m py_compile scripts\page_to_md_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\inward_eyes\__init__.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py evals\run_eval.py evals\run_safety_eval.py`
+- M3 research compile check: `python -m py_compile scripts\browser_research_runner.py scripts\validation\validate_browser_research.py scripts\inward_eyes\research.py scripts\inward_eyes\validation.py evals\run_research_eval.py`
+- M4 price compile check: `python -m py_compile scripts\price_compare_runner.py scripts\validation\validate_price_compare.py scripts\inward_eyes\price.py scripts\inward_eyes\validation.py evals\run_price_eval.py`
 - Run evals: `python evals\run_eval.py`
 - Run safety evals: `python evals\run_safety_eval.py`
+- Run research evals: `python evals\run_research_eval.py`
+- Run price evals: `python evals\run_price_eval.py`
 - Validate one page-to-md run: `python scripts\validation\validate_page_to_md.py <run_dir>`
+- Validate one browser-research run: `python scripts\validation\validate_browser_research.py <run_dir>`
+- Validate one price-compare run: `python scripts\validation\validate_price_compare.py <run_dir>`
 - Validate a JSON artifact against a schema: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>`
+- Validate a nested JSON value against a schema: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path> --pointer /path/to/value`
+- CI workflow: `.github/workflows/ci.yml`
 - Validate plugin: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
 - Build/package plugin: Unknown - distribution workflow is not implemented yet.
 

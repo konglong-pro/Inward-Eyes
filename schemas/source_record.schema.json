@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/source_record.schema.json",
+  "title": "SourceRecord",
+  "type": "object",
+  "required": [
+    "source_id",
+    "url",
+    "title",
+    "page_type",
+    "accessed_at",
+    "requires_login",
+    "capture_method",
+    "evidence",
+    "screenshot_policy",
+    "content_scope",
+    "warnings"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{3}$"
+    },
+    "url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonical_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "page_type": {
+      "type": "string",
+      "enum": [
+        "article",
+        "blog",
+        "docs",
+        "x_thread",
+        "forum_thread",
+        "product_page",
+        "unknown"
+      ]
+    },
+    "accessed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requires_login": {
+      "type": "boolean"
+    },
+    "capture_method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "screenshot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snapshot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_record": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "screenshot_policy": {
+      "type": "object",
+      "required": [
+        "required",
+        "reason",
+        "status"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "content_scope": {
+      "type": "object",
+      "required": [
+        "included",
+        "excluded"
+      ],
+      "properties": {
+        "included": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

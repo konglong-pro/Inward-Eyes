@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/research_report.schema.json",
+  "title": "ResearchReport",
+  "type": "object",
+  "description": "Placeholder schema for M3. Not enforced in M2.",
+  "x_status": "planned"
+}

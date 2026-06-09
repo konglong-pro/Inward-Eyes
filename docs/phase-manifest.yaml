@@ -1,0 +1,35 @@
+﻿current:
+  inward_eyes:
+    phase_id: m0_m2_foundation_page_to_md
+    title: "M0-M2 closed; M3-M5 not approved"
+    status: completed
+    canonical_spec: docs/planning/archive/m0-m2-foundation-and-page-to-md.md
+    agent_rules: docs/agents/current/browser-operator-agent-rules.md
+    release_gate: null
+    allowed_areas:
+      - AGENTS.md
+      - README.md
+      - CONTEXT.md
+      - docs/**
+    forbidden_areas:
+      - runtime browser profiles
+      - cookies
+      - tokens
+      - payment/account settings
+    status_summary: docs/project-status.md
+
+phases:
+  m0_m2_foundation_page_to_md:
+    status: completed
+    canonical_spec: docs/planning/archive/m0-m2-foundation-and-page-to-md.md
+    closeout: docs/planning/archive/m0-m2-closeout.md
+    evidence: []
+    supersedes: []
+    superseded_by: null
+  m3_m5_research_price_pluginization:
+    status: next
+    canonical_spec: docs/planning/next/m3-m5-research-price-pluginization.md
+    closeout: null
+    evidence: []
+    supersedes: []
+    superseded_by: null

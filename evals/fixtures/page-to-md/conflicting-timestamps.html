@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Conflicting Timestamp Example</title>
+    <link rel="canonical" href="https://example.test/articles/conflicting-time">
+    <meta name="author" content="Time Tester">
+    <meta property="article:published_time" content="2026-06-07T08:00:00Z">
+  </head>
+  <body>
+    <main>
+      <article>
+        <h1>Conflicting Timestamp Example</h1>
+        <time datetime="2026-06-08T09:30:00Z">June 8, 2026</time>
+        <p>This fixture contains conflicting metadata and visible time values for validation warnings.</p>
+        <p>The converter should keep one value but preserve a conflict warning for manual review.</p>
+      </article>
+    </main>
+  </body>
+</html>

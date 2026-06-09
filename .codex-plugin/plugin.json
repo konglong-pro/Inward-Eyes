@@ -1,0 +1,33 @@
+{
+  "name": "inward-eyes",
+  "version": "0.1.0",
+  "description": "Evidence-backed browser workflows for Codex page conversion, research, and price comparison.",
+  "author": {
+    "name": "Inward Eyes Project"
+  },
+  "license": "MIT",
+  "keywords": [
+    "browser",
+    "codex",
+    "markdown",
+    "evidence",
+    "research",
+    "price-compare"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Inward Eyes",
+    "shortDescription": "Evidence-backed browser workflows for Codex.",
+    "longDescription": "Read-only Codex skills for page-to-Markdown conversion, source-backed browser research, and ecommerce price comparison with source records, validation, and evidence manifests.",
+    "developerName": "Inward Eyes Project",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Convert this page to Markdown with evidence.",
+      "Create a source-backed research report.",
+      "Compare these product URLs with evidence."
+    ]
+  }
+}

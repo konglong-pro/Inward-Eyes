@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "cap_forum_thread_001",
+  "captured_at": "2026-06-09T12:15:00Z",
+  "capture_method": "synthetic_forum_capture",
+  "source": {
+    "url": "https://forum.example.test/t/evidence/42",
+    "canonical_url": "https://forum.example.test/t/evidence/42",
+    "page_title": "Forum Thread About Evidence",
+    "site_name": "Forum Example",
+    "requires_login": false
+  },
+  "browser_context": {
+    "tool": "manual_fixture",
+    "login_state": "not_required",
+    "user_visible_profile": false
+  },
+  "content": {
+    "html": null,
+    "text": null,
+    "accessibility_snapshot": null,
+    "selected_main_content": null
+  },
+  "document": {
+    "title": {
+      "value": "Forum Thread About Evidence",
+      "confidence": 0.95,
+      "evidence": "capture.page_title"
+    },
+    "author": {
+      "value": "forum_user",
+      "confidence": 0.8,
+      "evidence": "thread_post.author"
+    },
+    "published_at": {
+      "value": null,
+      "confidence": 0,
+      "evidence": "not_found"
+    },
+    "language": "en"
+  },
+  "document_ast": {
+    "schema_version": "1.0",
+    "document": {
+      "title": {
+        "value": "Forum Thread About Evidence",
+        "confidence": 0.95,
+        "evidence": "capture.page_title"
+      },
+      "blocks": [
+        {
+          "type": "thread_post",
+          "author": "forum_user",
+          "published_at": null,
+          "permalink": "https://forum.example.test/t/evidence/42/1",
+          "body_blocks": [
+            {
+              "type": "paragraph",
+              "text": "Forum extraction needs to keep post authors, permalinks, and bodies separated."
+            }
+          ],
+          "warnings": [
+            "published_time_not_found"
+          ]
+        }
+      ]
+    },
+    "warnings": [
+      "published_at_not_found",
+      "screenshot_capture_failed"
+    ]
+  },
+  "assets": {
+    "screenshots": [],
+    "images": []
+  },
+  "privacy": {
+    "redaction_applied": false,
+    "private_data_detected": false,
+    "redaction_notes": []
+  },
+  "screenshot_policy": {
+    "required": true,
+    "reason": "forum_thread",
+    "status": "capture_failed"
+  },
+  "warnings": [
+    "screenshot_capture_failed"
+  ]
+}

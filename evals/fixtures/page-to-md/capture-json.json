@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "cap_001",
+  "captured_at": "2026-06-09T12:00:00Z",
+  "capture_method": "manual_page_capture_json",
+  "source": {
+    "url": "https://example.test/captures/structured-source",
+    "canonical_url": "https://example.test/captures/structured-source",
+    "page_title": "Structured Capture Source",
+    "site_name": "Example Test",
+    "requires_login": false
+  },
+  "browser_context": {
+    "tool": "manual_fixture",
+    "login_state": "not_required",
+    "user_visible_profile": false,
+    "region_or_locale": null,
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    }
+  },
+  "content": {
+    "html": null,
+    "text": null,
+    "accessibility_snapshot": null,
+    "selected_main_content": null
+  },
+  "document": {
+    "title": {
+      "value": "Structured Capture Source",
+      "confidence": 0.99,
+      "evidence": "capture.title"
+    },
+    "author": {
+      "value": "Capture Maintainer",
+      "confidence": 0.9,
+      "evidence": "capture.author"
+    },
+    "published_at": {
+      "value": "2026-06-03T10:00:00Z",
+      "confidence": 0.9,
+      "evidence": "capture.published_at"
+    },
+    "language": "en"
+  },
+  "document_ast": {
+    "schema_version": "1.0",
+    "document": {
+      "title": {
+        "value": "Structured Capture Source",
+        "confidence": 0.99,
+        "evidence": "capture.title"
+      },
+      "blocks": [
+        {
+          "type": "heading",
+          "level": 1,
+          "text": "Structured Capture Source",
+          "source_ref": "capture:h1"
+        },
+        {
+          "type": "paragraph",
+          "text": "Capture JSON lets browser tooling hand deterministic page content to the renderer without re-parsing HTML.",
+          "source_ref": "capture:p1"
+        },
+        {
+          "type": "paragraph",
+          "text": "The runner should still write metadata, source evidence, validation, and a manifest.",
+          "source_ref": "capture:p2"
+        }
+      ]
+    },
+    "warnings": []
+  },
+  "assets": {
+    "screenshots": [],
+    "images": []
+  },
+  "privacy": {
+    "redaction_applied": false,
+    "private_data_detected": false,
+    "redaction_notes": []
+  },
+  "screenshot_policy": {
+    "required": false,
+    "reason": "static_public_article",
+    "status": "not_required"
+  },
+  "warnings": []
+}

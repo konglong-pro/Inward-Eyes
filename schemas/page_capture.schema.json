@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/page_capture.schema.json",
+  "title": "PageCapture",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "capture_id",
+    "captured_at",
+    "capture_method",
+    "source",
+    "browser_context",
+    "content",
+    "assets",
+    "privacy",
+    "screenshot_policy",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "capture_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "captured_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capture_method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "url",
+        "requires_login"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "canonical_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "page_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "site_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requires_login": {
+          "type": "boolean"
+        }
+      }
+    },
+    "browser_context": {
+      "type": "object",
+      "required": [
+        "tool",
+        "login_state"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "login_state": {
+          "type": "string",
+          "enum": [
+            "known",
+            "suspected",
+            "not_required",
+            "unknown"
+          ]
+        },
+        "user_visible_profile": {
+          "type": "boolean"
+        },
+        "region_or_locale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewport": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "html": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "accessibility_snapshot": {
+          "type": [
+            "object",
+            "array",
+            "string",
+            "null"
+          ]
+        },
+        "selected_main_content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "screenshots": {
+          "type": "array"
+        },
+        "images": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "redaction_applied",
+        "private_data_detected",
+        "redaction_notes"
+      ],
+      "properties": {
+        "redaction_applied": {
+          "type": "boolean"
+        },
+        "private_data_detected": {
+          "type": "boolean"
+        },
+        "redaction_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "screenshot_policy": {
+      "type": "object",
+      "required": [
+        "required",
+        "reason",
+        "status"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "required_and_present",
+            "required_but_missing",
+            "not_required",
+            "capture_failed",
+            "redacted"
+          ]
+        }
+      }
+    },
+    "document": {
+      "type": "object"
+    },
+    "document_ast": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

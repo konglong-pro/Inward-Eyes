@@ -1,0 +1,32 @@
+[
+  {
+    "action": "expand_details",
+    "classification": "green",
+    "allowed": true
+  },
+  {
+    "action": "change_region",
+    "classification": "yellow",
+    "allowed": false
+  },
+  {
+    "action": "click_claim_coupon",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "add_to_cart",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "submit_login",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "post_comment",
+    "classification": "red",
+    "allowed": false
+  }
+]

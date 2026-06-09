@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/validation_report.schema.json",
+  "title": "ValidationReport",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "errors",
+    "warnings",
+    "requires_manual_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requires_manual_review": {
+      "type": "boolean"
+    },
+    "screenshot_policy": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

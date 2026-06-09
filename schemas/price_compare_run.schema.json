@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/price_compare_run.schema.json",
+  "title": "PriceCompareRun",
+  "type": "object",
+  "description": "Placeholder schema for M4. Not enforced in M2.",
+  "x_status": "planned"
+}

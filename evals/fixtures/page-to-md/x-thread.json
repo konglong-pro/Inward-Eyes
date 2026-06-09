@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "cap_x_thread_001",
+  "captured_at": "2026-06-09T12:10:00Z",
+  "capture_method": "synthetic_thread_capture",
+  "source": {
+    "url": "https://x.example.test/thread/100",
+    "canonical_url": "https://x.example.test/thread/100",
+    "page_title": "Synthetic X Thread",
+    "site_name": "X Example",
+    "requires_login": false
+  },
+  "browser_context": {
+    "tool": "manual_fixture",
+    "login_state": "not_required",
+    "user_visible_profile": false
+  },
+  "content": {
+    "html": null,
+    "text": null,
+    "accessibility_snapshot": null,
+    "selected_main_content": null
+  },
+  "document": {
+    "title": {
+      "value": "Synthetic X Thread",
+      "confidence": 0.95,
+      "evidence": "capture.page_title"
+    },
+    "author": {
+      "value": "thread_author",
+      "confidence": 0.8,
+      "evidence": "thread_post.author"
+    },
+    "published_at": {
+      "value": null,
+      "confidence": 0,
+      "evidence": "not_found"
+    },
+    "language": "en"
+  },
+  "document_ast": {
+    "schema_version": "1.0",
+    "document": {
+      "title": {
+        "value": "Synthetic X Thread",
+        "confidence": 0.95,
+        "evidence": "capture.page_title"
+      },
+      "blocks": [
+        {
+          "type": "thread_post",
+          "author": "thread_author",
+          "published_at": null,
+          "permalink": "https://x.example.test/thread/100/1",
+          "body_blocks": [
+            {
+              "type": "paragraph",
+              "text": "The first post explains why thread posts need their own AST block type."
+            }
+          ],
+          "warnings": [
+            "published_time_not_found"
+          ]
+        },
+        {
+          "type": "thread_post",
+          "author": "reply_author",
+          "published_at": null,
+          "permalink": "https://x.example.test/thread/100/2",
+          "body_blocks": [
+            {
+              "type": "paragraph",
+              "text": "The reply keeps author and permalink separate from ordinary paragraphs."
+            }
+          ],
+          "warnings": [
+            "published_time_not_found"
+          ]
+        }
+      ]
+    },
+    "warnings": [
+      "published_at_not_found",
+      "screenshot_capture_failed"
+    ]
+  },
+  "assets": {
+    "screenshots": [],
+    "images": []
+  },
+  "privacy": {
+    "redaction_applied": false,
+    "private_data_detected": false,
+    "redaction_notes": []
+  },
+  "screenshot_policy": {
+    "required": true,
+    "reason": "x_thread",
+    "status": "capture_failed"
+  },
+  "warnings": [
+    "screenshot_capture_failed"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "cap_partial_001",
+  "captured_at": "2026-06-09T12:25:00Z",
+  "capture_method": "screenshot_visible_text_fallback",
+  "source": {
+    "url": "https://example.test/partial/screenshot-only",
+    "canonical_url": null,
+    "page_title": "Partial Screenshot Fallback",
+    "site_name": "Example Test",
+    "requires_login": false
+  },
+  "browser_context": {
+    "tool": "manual_fixture",
+    "login_state": "unknown",
+    "user_visible_profile": false
+  },
+  "content": {
+    "html": null,
+    "text": null,
+    "accessibility_snapshot": null,
+    "selected_main_content": "Partial Screenshot Fallback\n\nOnly visible text was available from the page screenshot, so this run must be treated as partial and manually reviewed."
+  },
+  "assets": {
+    "screenshots": [],
+    "images": []
+  },
+  "privacy": {
+    "redaction_applied": false,
+    "private_data_detected": false,
+    "redaction_notes": []
+  },
+  "screenshot_policy": {
+    "required": true,
+    "reason": "screenshot_fallback",
+    "status": "capture_failed"
+  },
+  "warnings": [
+    "partial_screenshot_fallback",
+    "screenshot_capture_failed"
+  ]
+}

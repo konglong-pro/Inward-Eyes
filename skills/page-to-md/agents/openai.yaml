@@ -1,0 +1,7 @@
+interface:
+  display_name: "Page to Markdown"
+  short_description: "Convert one page to evidence-backed Markdown."
+  default_prompt: "Use page-to-md to convert this page to Markdown with metadata, evidence, and validation."
+
+policy:
+  allow_implicit_invocation: true

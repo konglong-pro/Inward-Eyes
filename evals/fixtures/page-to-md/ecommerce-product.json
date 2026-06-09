@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "cap_product_001",
+  "captured_at": "2026-06-09T12:20:00Z",
+  "capture_method": "synthetic_product_capture",
+  "source": {
+    "url": "https://shop.example.test/product/sku-123",
+    "canonical_url": "https://shop.example.test/product/sku-123",
+    "page_title": "Example Phone 256GB Black",
+    "site_name": "Shop Example",
+    "requires_login": false
+  },
+  "browser_context": {
+    "tool": "manual_fixture",
+    "login_state": "not_required",
+    "user_visible_profile": false,
+    "region_or_locale": "CN-Shanghai"
+  },
+  "content": {
+    "html": null,
+    "text": null,
+    "accessibility_snapshot": null,
+    "selected_main_content": null
+  },
+  "document": {
+    "title": {
+      "value": "Example Phone 256GB Black",
+      "confidence": 0.95,
+      "evidence": "product.title"
+    },
+    "author": {
+      "value": null,
+      "confidence": 0,
+      "evidence": "not_found"
+    },
+    "published_at": {
+      "value": null,
+      "confidence": 0,
+      "evidence": "not_found"
+    },
+    "language": "en"
+  },
+  "document_ast": {
+    "schema_version": "1.0",
+    "document": {
+      "title": {
+        "value": "Example Phone 256GB Black",
+        "confidence": 0.95,
+        "evidence": "product.title"
+      },
+      "blocks": [
+        {
+          "type": "heading",
+          "level": 1,
+          "text": "Example Phone 256GB Black",
+          "source_ref": "product:h1"
+        },
+        {
+          "type": "paragraph",
+          "text": "Selected specification: 256GB storage, black color, new condition.",
+          "source_ref": "product:spec"
+        },
+        {
+          "type": "table",
+          "headers": [
+            "Field",
+            "Value"
+          ],
+          "rows": [
+            [
+              "Field",
+              "Value"
+            ],
+            [
+              "Seller",
+              "Official Store"
+            ],
+            [
+              "Availability",
+              "In stock"
+            ]
+          ],
+          "warnings": []
+        }
+      ]
+    },
+    "warnings": [
+      "author_not_found",
+      "published_at_not_found",
+      "screenshot_capture_failed"
+    ]
+  },
+  "assets": {
+    "screenshots": [],
+    "images": []
+  },
+  "privacy": {
+    "redaction_applied": false,
+    "private_data_detected": false,
+    "redaction_notes": []
+  },
+  "screenshot_policy": {
+    "required": true,
+    "reason": "product_page",
+    "status": "capture_failed"
+  },
+  "warnings": [
+    "screenshot_capture_failed"
+  ]
+}

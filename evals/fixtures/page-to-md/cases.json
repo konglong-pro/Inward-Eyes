@@ -1,0 +1,212 @@
+[
+  {
+    "name": "public-article",
+    "input": "public-article.html",
+    "url": "https://example.test/articles/evidence-first",
+    "page_type": "article",
+    "expected_title": "Evidence First Browser Workflows",
+    "required_warnings": [],
+    "required_terms": [
+      "Every extracted field should point back to a source record",
+      "Structured extraction should happen before visual fallback"
+    ],
+    "forbidden_terms": [
+      "Recommended",
+      "Advertisement",
+      "Subscribe now"
+    ]
+  },
+  {
+    "name": "docs-page",
+    "input": "docs-page.html",
+    "url": "https://example.test/docs/page-to-md",
+    "page_type": "docs",
+    "expected_title": "page-to-md Runner",
+    "required_warnings": [],
+    "required_terms": [
+      "The runner writes a manifest",
+      "validation report"
+    ],
+    "forbidden_terms": [
+      "Cookie Policy",
+      "Related pages"
+    ]
+  },
+  {
+    "name": "public-article-2",
+    "input": "public-article-2.html",
+    "url": "https://example.test/articles/auditable-markdown",
+    "page_type": "article",
+    "expected_title": "Auditable Markdown Conversion",
+    "required_warnings": [],
+    "required_terms": [
+      "preserve the source meaning",
+      "traceable to source records"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "broken-metadata",
+    "input": "broken-metadata.html",
+    "url": "https://example.test/posts/untitled-source",
+    "page_type": "article",
+    "expected_title": "A Page With Missing Metadata",
+    "required_warnings": [
+      "author_not_found",
+      "published_at_not_found",
+      "canonical_url_not_found"
+    ],
+    "required_terms": [
+      "The converter must not invent missing metadata"
+    ],
+    "forbidden_terms": [
+      "Advertisement"
+    ]
+  },
+  {
+    "name": "x-thread",
+    "input": "x-thread.json",
+    "url": "https://x.example.test/thread/100",
+    "page_type": "x_thread",
+    "expected_title": "Synthetic X Thread",
+    "required_warnings": [
+      "screenshot_capture_failed",
+      "published_at_not_found"
+    ],
+    "required_terms": [
+      "Post by thread_author",
+      "author and permalink separate"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "forum-thread",
+    "input": "forum-thread.json",
+    "url": "https://forum.example.test/t/evidence/42",
+    "page_type": "forum_thread",
+    "expected_title": "Forum Thread About Evidence",
+    "required_warnings": [
+      "screenshot_capture_failed",
+      "published_at_not_found"
+    ],
+    "required_terms": [
+      "Forum extraction needs",
+      "post authors"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "ecommerce-product",
+    "input": "ecommerce-product.json",
+    "url": "https://shop.example.test/product/sku-123",
+    "page_type": "product_page",
+    "expected_title": "Example Phone 256GB Black",
+    "required_warnings": [
+      "screenshot_capture_failed"
+    ],
+    "required_terms": [
+      "Selected specification",
+      "Official Store"
+    ],
+    "forbidden_terms": [
+      "Add to cart",
+      "Buy now"
+    ]
+  },
+  {
+    "name": "partial-screenshot-fallback",
+    "input": "partial-screenshot-fallback.json",
+    "url": "https://example.test/partial/screenshot-only",
+    "page_type": "unknown",
+    "expected_title": "Partial Screenshot Fallback",
+    "required_warnings": [
+      "partial_screenshot_fallback",
+      "screenshot_capture_failed",
+      "author_not_found",
+      "published_at_not_found"
+    ],
+    "required_terms": [
+      "Only visible text was available",
+      "treated as partial"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "conflicting-timestamps",
+    "input": "conflicting-timestamps.html",
+    "url": "https://example.test/articles/conflicting-time",
+    "page_type": "article",
+    "expected_title": "Conflicting Timestamp Example",
+    "required_warnings": [
+      "conflicting_publish_times"
+    ],
+    "required_terms": [
+      "conflicting metadata",
+      "manual review"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "missing-main-content",
+    "input": "missing-main-content.html",
+    "url": "https://example.test/articles/missing-main",
+    "page_type": "article",
+    "expected_title": "Missing Main Content Example",
+    "required_warnings": [
+      "main_content_not_found",
+      "author_not_found",
+      "published_at_not_found"
+    ],
+    "required_terms": [
+      "Missing Main Content Example"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "capture-json",
+    "input": "capture-json.json",
+    "url": "https://example.test/captures/structured-source",
+    "page_type": "article",
+    "expected_title": "Structured Capture Source",
+    "required_warnings": [],
+    "required_terms": [
+      "Capture JSON lets browser tooling hand deterministic page content",
+      "The runner should still write metadata"
+    ],
+    "forbidden_terms": [
+      "Advertisement"
+    ]
+  },
+  {
+    "name": "prompt-injection",
+    "input": "prompt-injection.html",
+    "url": "https://example.test/articles/prompt-injection",
+    "page_type": "article",
+    "expected_title": "Prompt Injection Is Page Data",
+    "required_warnings": [],
+    "required_terms": [
+      "malicious page content and must remain data",
+      "without obeying it"
+    ],
+    "forbidden_terms": []
+  },
+  {
+    "name": "noisy-boilerplate",
+    "input": "noisy-boilerplate.html",
+    "url": "https://example.test/articles/noise",
+    "page_type": "article",
+    "expected_title": "Clean Main Content From Noise",
+    "required_warnings": [],
+    "required_terms": [
+      "central article paragraph",
+      "remove surrounding boilerplate"
+    ],
+    "forbidden_terms": [
+      "Recommended",
+      "More like this",
+      "Cookie Policy",
+      "Subscribe now",
+      "Advertisement"
+    ]
+  }
+]

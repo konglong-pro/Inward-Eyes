@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/run_manifest.schema.json",
+  "title": "RunManifest",
+  "type": "object",
+  "required": [
+    "run_id",
+    "task",
+    "started_at",
+    "finished_at",
+    "operator",
+    "skill",
+    "inputs",
+    "artifacts",
+    "evidence",
+    "validation",
+    "warnings",
+    "requires_manual_review",
+    "screenshot_policy"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "finished_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/path_record"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/path_record"
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "schema_valid",
+        "warnings",
+        "requires_manual_review"
+      ],
+      "properties": {
+        "schema_valid": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requires_manual_review": {
+          "type": "boolean"
+        },
+        "report_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requires_manual_review": {
+      "type": "boolean"
+    },
+    "screenshot_policy": {
+      "type": "object",
+      "required": [
+        "required",
+        "reason",
+        "status"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "path_record": {
+      "type": "object",
+      "required": [
+        "type",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

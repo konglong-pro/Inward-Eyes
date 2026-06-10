@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "topic": "Unsupported claim regression",
+  "question": "Does validation fail when a key fact lacks support?",
+  "summary": "This fixture intentionally includes an unsupported claim.",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://inward-eyes.local/contracts/evidence",
+      "canonical_url": "https://inward-eyes.local/contracts/evidence",
+      "title": "Evidence Contract",
+      "site_name": "Inward Eyes",
+      "source_type": "project_contract",
+      "page_type": "docs",
+      "accessed_at": "2026-06-09T00:00:00Z",
+      "requires_login": false,
+      "capture_method": "synthetic_fixture",
+      "evidence_status": "source_record_present"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "This key fact has no source IDs and no support entries, so validation must fail.",
+      "claim_type": "fact",
+      "is_key_finding": true,
+      "source_ids": [],
+      "support": [],
+      "single_source": false,
+      "confidence": "low"
+    }
+  ],
+  "warnings": []
+}

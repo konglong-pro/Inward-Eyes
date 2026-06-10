@@ -2,7 +2,7 @@
 doc_type: phase_plan
 phase_id: m3_m5_research_price_pluginization
 title: browser-research, price-compare, and pluginization
-status: next
+status: mvp_completed
 canonical: true
 related_contracts:
   - docs/contracts/evidence-contract.md
@@ -17,7 +17,9 @@ related_adrs:
 
 ## Status
 
-Next. Do not implement until M0-M2 closes or the user explicitly reprioritizes.
+MVP completed. The M3 `browser-research` MVP is complete through `docs/planning/archive/m3-browser-research-mvp-closeout.md`. The M4-M5 `price-compare` and pluginization MVP is complete through `docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md` after explicit user approval on 2026-06-09.
+
+Browser/MCP adapter work, broad product discovery, marketplace installation, and package distribution remain next. Do not implement those areas without a new active slice or explicit approval.
 
 ## Milestone 3: browser-research
 

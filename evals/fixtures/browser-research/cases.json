@@ -1,0 +1,27 @@
+[
+  {
+    "name": "evidence-backed-research",
+    "input": "evidence-backed-research.json",
+    "expected_status": "pass",
+    "required_report_terms": [
+      "C001",
+      "[S001]",
+      "single-source",
+      "Unknowns",
+      "claim ledger"
+    ],
+    "required_source_ids": [
+      "S001",
+      "S002"
+    ]
+  },
+  {
+    "name": "unsupported-claim",
+    "input": "unsupported-claim.json",
+    "expected_status": "fail",
+    "required_error_terms": [
+      "unsupported_claim:C001:no_source_ids",
+      "unsupported_claim:C001:no_support"
+    ]
+  }
+]

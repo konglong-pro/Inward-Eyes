@@ -8,11 +8,21 @@ Testing for Inward Eyes must prove that outputs are structured, evidence-backed,
 
 Run from `E:\Inward Eyes`.
 
+The current release class is local deterministic MVP. CI covers repository-contained local workflows, not real browser adapters.
+
 - Compile check: `python -m py_compile scripts\page_to_md_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\inward_eyes\__init__.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py evals\run_eval.py evals\run_safety_eval.py`
+- M3 research compile check: `python -m py_compile scripts\browser_research_runner.py scripts\validation\validate_browser_research.py scripts\inward_eyes\research.py scripts\inward_eyes\validation.py evals\run_research_eval.py`
+- M4 price compile check: `python -m py_compile scripts\price_compare_runner.py scripts\validation\validate_price_compare.py scripts\inward_eyes\price.py scripts\inward_eyes\validation.py evals\run_price_eval.py`
 - Eval runner: `python evals\run_eval.py`
 - Safety eval runner: `python evals\run_safety_eval.py`
+- Research eval runner: `python evals\run_research_eval.py`
+- Price eval runner: `python evals\run_price_eval.py`
 - Validate one page-to-md run: `python scripts\validation\validate_page_to_md.py <run_dir>`
+- Validate one browser-research run: `python scripts\validation\validate_browser_research.py <run_dir>`
+- Validate one price-compare run: `python scripts\validation\validate_price_compare.py <run_dir>`
 - Minimal schema validation: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>`
+- Nested schema validation: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path> --pointer /path/to/value`
+- CI workflow: `.github/workflows/ci.yml`
 - Plugin validation: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
 - Plugin packaging check: no package/distribution command exists yet.
 
@@ -42,6 +52,8 @@ Every generated JSON artifact must validate against its schema:
 - `research_report`
 - `price_record`
 - `price_compare_run`
+- `validation_report`
+- `run_manifest` status fields: `run_status`, `validation_status`, `manual_review`, and `completion_blockers`
 
 ### Script Unit Tests
 
@@ -73,6 +85,11 @@ Currently implemented:
 - partial/screenshot fallback
 - conflicting timestamps
 - missing main content
+- browser-research claim ledger pass fixture
+- browser-research unsupported claim fail fixture
+- price-compare valid quotes fixture
+- price-compare low-confidence exclusion fixture
+- price-compare missing screenshot fail fixture
 
 ### M2 Closeout Fixture Set
 

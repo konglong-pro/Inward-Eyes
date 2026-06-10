@@ -8,7 +8,11 @@
     "status",
     "errors",
     "warnings",
-    "requires_manual_review"
+    "requires_manual_review",
+    "run_status",
+    "validation_status",
+    "manual_review",
+    "completion_blockers"
   ],
   "properties": {
     "schema_version": {
@@ -35,6 +39,21 @@
     },
     "requires_manual_review": {
       "type": "boolean"
+    },
+    "run_status": {
+      "type": "string"
+    },
+    "validation_status": {
+      "type": "string"
+    },
+    "manual_review": {
+      "type": "object"
+    },
+    "completion_blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "screenshot_policy": {
       "type": "object"

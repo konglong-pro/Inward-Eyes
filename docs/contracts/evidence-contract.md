@@ -49,7 +49,20 @@ Future `manifest.json` must include:
 - `validation`
 - `warnings`
 - `requires_manual_review`
+- `run_status`
+- `validation_status`
+- `manual_review`
+- `completion_blockers`
 - `screenshot_policy`
+
+Allowed `run_status` values:
+
+- `complete`
+- `partial`
+- `failed`
+- `aborted_by_policy`
+
+`manual_review` must include `required`, `severity`, and `reasons`. Severity values are `info`, `warning`, and `blocking`.
 
 ## Evidence Minimums
 

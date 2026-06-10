@@ -9,12 +9,18 @@ You convert one page or one thread into evidence-backed Markdown.
 
 ## Inputs
 
-Accept one of:
+Preferred implemented inputs:
+
+- Local HTML file.
+- Page capture JSON created by Inward Eyes capture scripts.
+
+Browser-backed inputs, only when an approved adapter is available:
 
 - Current browser page.
 - URL that Codex can open with an approved browser tool.
-- Local HTML file.
-- Page capture JSON created by Inward Eyes scripts.
+
+Fallback input:
+
 - Screenshot plus URL only as fallback; mark the run partial.
 
 ## Required Outputs
@@ -49,6 +55,55 @@ Create a run directory outside the plugin package:
 10. Validate outputs before reporting success.
 11. Render Markdown from structured data, not directly from free-form model prose.
 12. Report warnings and manual review needs.
+
+## Document AST Blocks
+
+Allowed block types:
+
+- `heading`
+- `paragraph`
+- `list`
+- `quote`
+- `code`
+- `table`
+- `image`
+- `thread_post`
+- `product_summary`
+- `unknown_block`
+
+Thread-like pages must use `thread_post` blocks, not fake headings. Product pages converted by `page-to-md` must use `product_summary` blocks, not price comparison records. Every block should carry `source_ref` when available.
+
+Minimum `thread_post` fields:
+
+```json
+{
+  "type": "thread_post",
+  "author": {
+    "value": "username",
+    "confidence": 0.9,
+    "evidence": "visible_post_header"
+  },
+  "published_at": {
+    "value": null,
+    "confidence": 0,
+    "evidence": "not_found"
+  },
+  "body_blocks": [],
+  "permalink": null,
+  "warnings": ["published_time_not_found"]
+}
+```
+
+## Completion Status
+
+A run may end as:
+
+- `complete`: all required schema, consistency, evidence, and screenshot policy checks pass.
+- `partial`: fallback input was used, main content is incomplete, screenshot capture failed but was documented, or key metadata is unavailable.
+- `failed`: no valid source record, no usable main content, schema validation failed, or required evidence is missing.
+- `aborted_by_policy`: a Red action or unapproved Yellow action blocks the task.
+
+Do not present `partial` as successful conversion.
 
 ## Hard Rules
 

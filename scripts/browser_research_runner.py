@@ -39,6 +39,10 @@ def create_manifest(
         "status": "pending",
         "warnings": [],
         "requires_manual_review": False,
+        "run_status": "complete",
+        "validation_status": "pending",
+        "manual_review": {"required": False, "severity": "info", "reasons": []},
+        "completion_blockers": [],
     }
     evidence = [
         {
@@ -83,6 +87,13 @@ def create_manifest(
         },
         "warnings": list(model.get("warnings") or []) + list(validation.get("warnings", [])),
         "requires_manual_review": bool(validation.get("requires_manual_review")),
+        "run_status": validation.get("run_status", "failed" if validation.get("status") == "fail" else "partial" if validation.get("requires_manual_review") else "complete"),
+        "validation_status": validation.get("validation_status", "passed" if validation.get("status") == "pass" else "failed" if validation.get("status") == "fail" else "pending"),
+        "manual_review": validation.get(
+            "manual_review",
+            {"required": bool(validation.get("requires_manual_review")), "severity": "warning" if validation.get("requires_manual_review") else "info", "reasons": []},
+        ),
+        "completion_blockers": validation.get("completion_blockers", []),
         "screenshot_policy": {"required": False, "reason": "per_source_policy", "status": "not_required"},
     }
 

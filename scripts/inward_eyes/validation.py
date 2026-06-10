@@ -31,6 +31,46 @@ def _source_dir_name(source_id: str) -> str:
     return source_id.lower().replace("_", "-")
 
 
+def _manual_review(required: bool, severity: str, reasons: list[dict[str, str]]) -> dict[str, Any]:
+    return {
+        "required": required,
+        "severity": severity,
+        "reasons": reasons,
+    }
+
+
+def _status_fields(
+    status: str,
+    warnings: list[str],
+    manual_review_required: bool,
+    manual_review_reasons: list[dict[str, str]],
+    completion_blockers: list[str],
+) -> dict[str, Any]:
+    if status == "fail":
+        run_status = "failed"
+        severity = "blocking"
+    elif manual_review_required:
+        run_status = "partial"
+        severity = "warning"
+    else:
+        run_status = "complete"
+        severity = "info"
+    return {
+        "run_status": run_status,
+        "validation_status": "passed" if status == "pass" else "failed",
+        "manual_review": _manual_review(
+            manual_review_required or bool(completion_blockers),
+            severity,
+            manual_review_reasons,
+        ),
+        "completion_blockers": completion_blockers,
+    }
+
+
+def _review_reasons(codes: list[str], severity: str, artifact: str) -> list[dict[str, str]]:
+    return [{"code": code, "message": code.replace("_", " "), "severity": severity, "artifact": artifact} for code in codes]
+
+
 def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -151,6 +191,9 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
             errors.append("manifest.inputs.source_url_mismatch")
 
     status = "fail" if errors else "pass"
+    reasons = _review_reasons(errors, "blocking", "validation/validation-report.json") + _review_reasons(
+        warnings if manual_review else [], "warning", "validation/validation-report.json"
+    )
     return {
         "schema_version": "1.0",
         "status": status,
@@ -158,6 +201,7 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
         "warnings": warnings,
         "requires_manual_review": manual_review,
         "screenshot_policy": _field(metadata or {}, "extraction.screenshot_policy") or {"required": False, "reason": "unknown", "status": "not_required"},
+        **_status_fields(status, warnings, manual_review, reasons, errors),
     }
 
 
@@ -238,6 +282,14 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             if not source.get(field_name):
                 errors.append(f"source.{source_id}.{field_name}_missing")
 
+        independence = source.get("independence") if isinstance(source.get("independence"), dict) else {}
+        independence_status = independence.get("status")
+        if independence_status not in {"independent", "not_independent", "unknown", "primary_source"}:
+            errors.append(f"source.{source_id}.independence_status_invalid:{independence_status}")
+        elif independence_status in {"not_independent", "unknown"}:
+            warnings.append(f"source_independence_{independence_status}:{source_id}")
+            manual_review = True
+
         evidence_path = source.get("evidence_path") or f"evidence/{_source_dir_name(source_id)}/source_record.json"
         source_record_path = run_dir / str(evidence_path)
         source_record = load(source_record_path)
@@ -282,6 +334,7 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             continue
         claim_id = str(claim.get("claim_id") or "")
         claim_type = str(claim.get("claim_type") or "")
+        claim_role = str(claim.get("claim_role") or ("unknown" if claim_type == "unknown" else "key_claim" if claim.get("is_key_finding") else "background"))
         source_id_list = [str(item) for item in claim.get("source_ids", []) if str(item).strip()] if isinstance(claim.get("source_ids"), list) else []
         support = claim.get("support") if isinstance(claim.get("support"), list) else []
         support_source_ids = [str(item.get("source_id") or "") for item in support if isinstance(item, dict)]
@@ -296,6 +349,8 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             errors.append(f"claim.text_missing:{claim_id}")
         if claim_type not in {"fact", "inference", "unknown"}:
             errors.append(f"claim.invalid_type:{claim_id}:{claim_type}")
+        if claim_role not in {"key_claim", "background", "method_note", "unknown", "limitation"}:
+            errors.append(f"claim.invalid_role:{claim_id}:{claim_role}")
 
         for source_id in source_id_list:
             if source_id not in source_ids:
@@ -313,19 +368,32 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             if support_type not in {"direct", "inferred"}:
                 errors.append(f"claim.invalid_support_type:{claim_id}:{support_type}")
 
-        if claim_type == "unknown":
+        if claim_role == "method_note":
+            if claim_id not in report_markdown:
+                errors.append(f"report.claim_missing:{claim_id}")
+            continue
+
+        if claim_role == "limitation" and not (claim.get("notes") or claim.get("reason")):
+            errors.append(f"limitation_without_reason:{claim_id}")
+
+        if claim_type == "unknown" or claim_role == "unknown":
             unknown_claims += 1
+            if not (claim.get("notes") or claim.get("sources_checked")):
+                errors.append(f"unknown_without_explanation:{claim_id}")
             if claim_id not in report_markdown:
                 errors.append(f"report.unknown_claim_missing:{claim_id}")
             continue
 
-        is_key = bool(claim.get("is_key_finding"))
+        is_key = claim_role == "key_claim" or bool(claim.get("is_key_finding"))
         if is_key and not source_id_list:
             errors.append(f"unsupported_claim:{claim_id}:no_source_ids")
             unsupported_claims.append(claim_id)
         if is_key and not support:
             errors.append(f"unsupported_claim:{claim_id}:no_support")
             unsupported_claims.append(claim_id)
+        if claim_role == "background" and (not source_id_list or not support):
+            warnings.append(f"background_claim_missing_support:{claim_id}")
+            manual_review = True
         if claim_type == "fact" and support and "direct" not in [str(item.get("support_type")) for item in support if isinstance(item, dict)]:
             errors.append(f"fact_without_direct_support:{claim_id}")
         if any(str(item.get("support_type")) == "inferred" for item in support if isinstance(item, dict)):
@@ -368,6 +436,9 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
                 errors.append(f"manifest.validation.{key}_missing_on_disk:{raw_path}")
 
     status = "fail" if errors else "pass"
+    reasons = _review_reasons(errors, "blocking", "validation/claim-coverage-report.json") + _review_reasons(
+        list(dict.fromkeys(warnings)) if manual_review else [], "warning", "validation/claim-coverage-report.json"
+    )
     return {
         "schema_version": "1.0",
         "status": status,
@@ -381,6 +452,7 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
         "single_source_claims": single_source_claims,
         "source_ids": sorted(source_ids),
         "screenshot_policy": {"required": False, "reason": "per_source_policy", "status": "not_required"},
+        **_status_fields(status, list(dict.fromkeys(warnings)), manual_review or bool(errors), reasons, errors),
     }
 
 
@@ -481,6 +553,7 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
     quote_ids: set[str] = set()
     eligible_quote_ids: list[str] = []
     source_ids: set[str] = set()
+    manual_review_codes: list[str] = []
     anomaly_keys = {
         f"{anomaly.get('record_id')}:{anomaly.get('anomaly')}"
         for anomaly in anomalies
@@ -520,6 +593,12 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         for field_name in ("url", "platform", "region", "currency", "seller", "condition", "stock", "accessed_at"):
             if not quote.get(field_name):
                 errors.append(f"quote.{quote_id}.{field_name}_missing")
+        if not isinstance(quote.get("quote_context"), dict):
+            errors.append(f"quote.{quote_id}.quote_context_missing")
+        if not quote.get("quote_context_hash"):
+            errors.append(f"quote.{quote_id}.quote_context_hash_missing")
+        elif not str(quote.get("quote_context_hash")).startswith("sha256:"):
+            errors.append(f"quote.{quote_id}.quote_context_hash_invalid")
 
         identity = quote.get("product_identity")
         if not isinstance(identity, dict):
@@ -542,6 +621,13 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
             errors.append(f"quote.{quote_id}.generic_price_field_forbidden")
         if prices.get("shipping_fee") is None and f"{quote_id}:unknown_shipping_fee" not in anomaly_keys:
             errors.append(f"quote.{quote_id}.unknown_shipping_fee_not_anomalized")
+        estimated_total = quote.get("estimated_total")
+        if not isinstance(estimated_total, dict):
+            errors.append(f"quote.{quote_id}.estimated_total_details_missing")
+        else:
+            for field_name in ("amount", "currency", "calculation", "components", "confidence", "warnings"):
+                if field_name not in estimated_total:
+                    errors.append(f"quote.{quote_id}.estimated_total.{field_name}_missing")
 
         flags = quote.get("flags") if isinstance(quote.get("flags"), dict) else {}
         for flag in ("coupon_action_required", "cart_required", "checkout_required", "membership_required", "address_change_required"):
@@ -549,6 +635,9 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
                 errors.append(f"quote.{quote_id}.flag_missing:{flag}")
         if any(flags.get(flag) for flag in ("coupon_action_required", "cart_required", "checkout_required", "address_change_required")):
             manual_review = True
+            for flag in ("coupon_action_required", "cart_required", "checkout_required", "address_change_required"):
+                if flags.get(flag):
+                    manual_review_codes.append(f"{quote_id}:{flag}")
             if quote.get("eligible_for_lowest_price"):
                 errors.append(f"quote.{quote_id}.red_action_required_but_eligible")
 
@@ -561,6 +650,10 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
             eligible_quote_ids.append(quote_id)
             if quote.get("comparison_price") is None:
                 errors.append(f"quote.{quote_id}.eligible_without_comparison_price")
+            if quote.get("manual_review_required"):
+                errors.append(f"quote.{quote_id}.manual_review_required_but_eligible")
+            if quote.get("excluded_from_lowest_price"):
+                errors.append(f"quote.{quote_id}.excluded_but_eligible")
 
         screenshot_policy = quote.get("screenshot_policy") if isinstance(quote.get("screenshot_policy"), dict) else {}
         if not screenshot_policy.get("required"):
@@ -575,8 +668,10 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         elif status == "required_but_missing":
             errors.append(f"quote.{quote_id}.screenshot_required_but_missing")
             manual_review = True
+            manual_review_codes.append(f"{quote_id}:screenshot_required_but_missing")
         elif status in {"capture_failed", "redacted"}:
             warnings.append(f"screenshot_{status}:{quote_id}")
+            manual_review_codes.append(f"{quote_id}:screenshot_{status}")
             manual_review = True
         else:
             errors.append(f"quote.{quote_id}.screenshot_status_invalid:{status}")
@@ -608,6 +703,7 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         errors.append("comparison.lowest_missing")
     if not eligible_quote_ids:
         manual_review = True
+        manual_review_codes.append("no_eligible_quotes")
 
     if manifest:
         for section in ("artifacts", "evidence"):
@@ -630,6 +726,10 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
             errors.append(f"manifest.validation.report_path_missing_on_disk:{raw_path}")
 
     status = "fail" if errors else "pass"
+    warning_reasons = list(dict.fromkeys(warnings + manual_review_codes)) if manual_review else []
+    reasons = _review_reasons(errors, "blocking", "validation/price-validation-report.json") + _review_reasons(
+        warning_reasons, "warning", "validation/price-validation-report.json"
+    )
     return {
         "schema_version": "1.0",
         "status": status,
@@ -642,4 +742,5 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         "anomaly_count": len(anomalies),
         "source_ids": sorted(source_ids),
         "screenshot_policy": {"required": True, "reason": "ecommerce_product_pages", "status": "per_quote_policy"},
+        **_status_fields(status, list(dict.fromkeys(warnings)), manual_review or bool(errors), reasons, errors),
     }

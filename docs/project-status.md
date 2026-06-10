@@ -4,13 +4,27 @@ Last updated: 2026-06-09
 
 ## Summary
 
-M0-M5 MVP is complete. Inward Eyes has local deterministic workflows for:
+Inward Eyes v0.2 is complete: deterministic local evidence workflows are complete; the real browser adapter layer is not implemented.
+
+Current release class: local deterministic MVP.
+
+M0-M5 MVP has local deterministic workflows for:
 
 - `page-to-md`: local HTML and page capture JSON to evidence-backed Markdown.
 - `browser-research`: local research input JSON to claim ledger, source records, report, source notes, and claim coverage validation.
 - `price-compare`: local price input JSON to price records, CSV, report, anomalies, chart, source records, screenshot-policy validation, and price validation report.
 
 The local Codex plugin is packaged as version `0.2.0` with all three skills and a GitHub Actions CI workflow for repository-contained checks.
+
+Version semantics:
+
+- `0.1.x`: `page-to-md` local deterministic workflow.
+- `0.2.x`: three local workflows plus local plugin validation and CI.
+- `0.3.x`: browser capture adapter contract implemented for one backend.
+- `0.4.x`: real `page-to-md` browser adapter MVP.
+- `0.5.x`: `browser-research` discovery/capture MVP.
+- `0.6.x`: `price-compare` real ecommerce URL capture MVP.
+- `1.0.0`: stable browser-backed plugin, still read-only.
 
 ## Frozen Behavior
 
@@ -38,6 +52,7 @@ Closeouts:
 Later work remains planned but not active:
 
 - Real browser/MCP capture for `browser-research` and `price-compare`.
+- M6 browser capture adapter MVP: `docs/planning/next/m6-browser-capture-adapter-mvp.md`.
 - Broad product discovery.
 - Site-specific ecommerce extraction profiles.
 - Marketplace installation and plugin distribution workflow.

@@ -52,6 +52,11 @@
           "price_compare_details"
         ]
       },
+      "independence": {
+        "status": "not_independent",
+        "related_to": "S001",
+        "reason": "same project authority as the milestone plan"
+      },
       "independence_note": "Durable contract source; same project authority as planning.",
       "notes": "Requires structured JSON before Markdown and consistency checks."
     }

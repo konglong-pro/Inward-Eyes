@@ -14,6 +14,8 @@
 - Local plugin manifest update to version `0.2.0`.
 - Pluginization reference doc and example input files.
 - GitHub Actions CI for repository-contained compile, eval, schema, and validator checks.
+- Unified `run_status`, `validation_status`, `manual_review`, and `completion_blockers` fields.
+- Price quote context hashes and estimated total calculation explanations.
 
 ## Frozen Behavior
 
@@ -33,7 +35,7 @@ Passed before closeout:
 - `python evals\run_safety_eval.py`
 - `python evals\run_research_eval.py`
 - `python evals\run_price_eval.py`
-- Schema checks for page, research, price run, price record via `--pointer /quotes/0`, and manifests.
+- Schema checks for page, research, price run, price record via `--pointer /quotes/0`, validation reports, and manifests.
 - `python scripts\validation\validate_price_compare.py evals\.tmp\price-compare\eval-product-quotes`
 - `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
 - `git diff --check`
@@ -50,3 +52,4 @@ Added `.github/workflows/ci.yml` for repository-contained checks. The CI intenti
 - Price chart rendering is intentionally minimal.
 - The project still uses a minimal JSON schema validator rather than a full JSON Schema implementation.
 - Eval fixtures remain synthetic.
+- v0.2 is a local deterministic MVP, not a live browser adapter or completed browser operator.

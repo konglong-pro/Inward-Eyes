@@ -2,6 +2,8 @@
 
 ## Current Package Shape
 
+Current release class: local deterministic MVP. The plugin can process local input JSON/HTML and render validated artifacts; it does not yet operate a live browser.
+
 The local plugin package is this repository root. It includes:
 
 - `.codex-plugin/plugin.json`

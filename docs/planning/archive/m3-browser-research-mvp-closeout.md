@@ -8,6 +8,7 @@
 - Claim ledger, source CSV, source notes, report rendering, and missing source report.
 - Claim coverage validator.
 - Synthetic pass and unsupported-claim fail evals.
+- Claim roles and source independence metadata.
 
 ## Frozen Behavior
 

@@ -68,6 +68,11 @@ For every skill:
 - Manifest artifact and evidence paths must exist.
 - Evidence requirements must be met.
 - Unknown fields must be explicit.
+- Run manifests must include `run_status`, `validation_status`, `manual_review`, and `completion_blockers`.
+- `run_status=complete` is allowed only when required schema, consistency, evidence, and screenshot policy checks pass.
+- `run_status=partial` is allowed for useful outputs that require manual review or fallback evidence.
+- `run_status=failed` is required for core schema, evidence, main content, claim support, or price record failures.
+- `run_status=aborted_by_policy` is required when a Red action or unapproved Yellow action blocks the task.
 
 ### page-to-md
 
@@ -81,15 +86,19 @@ For every skill:
 ### browser-research
 
 - Every key finding has one or more source IDs.
+- Claims use `claim_role`: `key_claim`, `background`, `method_note`, `unknown`, or `limitation`.
 - Claim type is one of fact, inference, or unknown.
 - Direct support and inferred support are separate.
 - Sources table and claim ledger agree.
 - Duplicated syndications are not counted as independent sources without note.
+- Sources record independence as `primary_source`, `independent`, `not_independent`, or `unknown`.
 
 ### price-compare
 
 - Every quote has product identity, specs, seller, platform, region, currency, timestamp, URL, and screenshot.
 - Price components remain separate.
+- Quote context and `quote_context_hash` must exist.
+- Estimated total must include calculation explanation.
 - Coupon actions are represented explicitly.
 - Low-confidence matches are excluded from final lowest-price conclusions.
 - Anomalies are listed.

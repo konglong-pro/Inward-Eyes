@@ -8,6 +8,8 @@ Testing for Inward Eyes must prove that outputs are structured, evidence-backed,
 
 Run from `E:\Inward Eyes`.
 
+The current release class is local deterministic MVP. CI covers repository-contained local workflows, not real browser adapters.
+
 - Compile check: `python -m py_compile scripts\page_to_md_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\inward_eyes\__init__.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py evals\run_eval.py evals\run_safety_eval.py`
 - M3 research compile check: `python -m py_compile scripts\browser_research_runner.py scripts\validation\validate_browser_research.py scripts\inward_eyes\research.py scripts\inward_eyes\validation.py evals\run_research_eval.py`
 - M4 price compile check: `python -m py_compile scripts\price_compare_runner.py scripts\validation\validate_price_compare.py scripts\inward_eyes\price.py scripts\inward_eyes\validation.py evals\run_price_eval.py`
@@ -50,6 +52,8 @@ Every generated JSON artifact must validate against its schema:
 - `research_report`
 - `price_record`
 - `price_compare_run`
+- `validation_report`
+- `run_manifest` status fields: `run_status`, `validation_status`, `manual_review`, and `completion_blockers`
 
 ### Script Unit Tests
 

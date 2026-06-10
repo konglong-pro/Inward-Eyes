@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
+import json
 import re
 import struct
 import zlib
@@ -57,6 +59,11 @@ def _number_or_none(value: Any) -> float | None:
 def _price_components(raw_quote: dict[str, Any]) -> dict[str, float | None]:
     raw_prices = raw_quote.get("prices") if isinstance(raw_quote.get("prices"), dict) else raw_quote
     return {key: _number_or_none(raw_prices.get(key)) for key in PRICE_KEYS}
+
+
+def _canonical_hash(data: dict[str, Any]) -> str:
+    payload = json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 def _required_specs(input_record: dict[str, Any]) -> dict[str, Any]:
@@ -118,6 +125,56 @@ def _quote_flags(raw_quote: dict[str, Any]) -> dict[str, bool]:
         "checkout_required": bool(raw_quote.get("checkout_required")),
         "membership_required": bool(raw_quote.get("membership_required")),
         "address_change_required": bool(raw_quote.get("address_change_required")),
+    }
+
+
+def quote_context(quote: dict[str, Any]) -> dict[str, Any]:
+    prices = quote.get("prices", {})
+    return {
+        "platform": quote.get("platform"),
+        "region": quote.get("region"),
+        "currency": quote.get("currency"),
+        "seller_type": quote.get("seller_type"),
+        "condition": quote.get("condition"),
+        "selected_specs": quote.get("product_identity", {}).get("specs", {}),
+        "membership_required": bool(quote.get("flags", {}).get("membership_required")),
+        "coupon_action_required": bool(quote.get("flags", {}).get("coupon_action_required")),
+        "cart_required": bool(quote.get("flags", {}).get("cart_required")),
+        "checkout_required": bool(quote.get("flags", {}).get("checkout_required")),
+        "shipping_known": prices.get("shipping_fee") is not None,
+        "stock_status": quote.get("stock"),
+    }
+
+
+def estimated_total_details(quote: dict[str, Any]) -> dict[str, Any]:
+    prices = quote.get("prices", {})
+    warnings = []
+    if quote.get("flags", {}).get("coupon_action_required"):
+        warnings.append("coupon_action_required")
+    if prices.get("estimated_total") is not None:
+        amount = prices["estimated_total"]
+        calculation = "page_visible_estimated_total"
+        components = {"base": "estimated_total", "shipping_fee": prices.get("shipping_fee")}
+    elif prices.get("sale_price") is not None and prices.get("shipping_fee") is not None:
+        amount = float(prices["sale_price"]) + float(prices["shipping_fee"])
+        calculation = "sale_price + shipping_fee"
+        components = {"base": "sale_price", "shipping_fee": prices.get("shipping_fee")}
+    elif prices.get("list_price") is not None and prices.get("shipping_fee") is not None:
+        amount = float(prices["list_price"]) + float(prices["shipping_fee"])
+        calculation = "list_price + shipping_fee"
+        components = {"base": "list_price", "shipping_fee": prices.get("shipping_fee")}
+    else:
+        amount = None
+        calculation = "unknown"
+        components = {"base": None, "shipping_fee": prices.get("shipping_fee")}
+        warnings.append("estimated_total_unknown")
+    return {
+        "amount": amount,
+        "currency": quote.get("currency"),
+        "calculation": calculation,
+        "components": components,
+        "confidence": 0.9 if amount is not None and not warnings else 0.5 if amount is not None else 0,
+        "warnings": warnings,
     }
 
 
@@ -185,8 +242,13 @@ def normalize_quote(
         screenshot = f"evidence/{quote_evidence_name(quote)}"
     quote["screenshot"] = screenshot
     quote["anomalies"] = detect_quote_anomalies(quote, input_record)
-    quote["eligible_for_lowest_price"] = is_quote_eligible(quote)
+    quote["quote_context"] = quote_context(quote)
+    quote["quote_context_hash"] = _canonical_hash(quote["quote_context"])
+    quote["estimated_total"] = estimated_total_details(quote)
     quote["comparison_price"] = comparison_price(quote)
+    quote["manual_review_required"] = bool(quote.get("anomalies") or quote.get("flags", {}).get("coupon_action_required") or quote.get("flags", {}).get("cart_required") or quote.get("flags", {}).get("checkout_required") or quote.get("flags", {}).get("address_change_required"))
+    quote["eligible_for_lowest_price"] = is_quote_eligible(quote)
+    quote["excluded_from_lowest_price"] = not quote["eligible_for_lowest_price"]
     return quote
 
 
@@ -249,7 +311,11 @@ def is_quote_eligible(quote: dict[str, Any]) -> bool:
     red_flags = ("coupon_action_required", "cart_required", "checkout_required", "address_change_required")
     if any(quote.get("flags", {}).get(flag) for flag in red_flags):
         return False
+    if quote.get("manual_review_required"):
+        return False
     if "incomplete_spec_match" in quote.get("anomalies", []):
+        return False
+    if quote.get("excluded_from_lowest_price"):
         return False
     return True
 
@@ -339,11 +405,15 @@ def render_prices_csv(quotes: list[dict[str, Any]]) -> str:
         "list_price",
         "sale_price",
         "coupon_price",
-        "shipping_fee",
-        "estimated_total",
-        "comparison_price",
-        "eligible_for_lowest_price",
-        "url",
+                "shipping_fee",
+                "estimated_total",
+                "estimated_total_calculation",
+                "quote_context_hash",
+                "comparison_price",
+                "manual_review_required",
+                "excluded_from_lowest_price",
+                "eligible_for_lowest_price",
+                "url",
     ]
     writer = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
     writer.writeheader()
@@ -367,7 +437,11 @@ def render_prices_csv(quotes: list[dict[str, Any]]) -> str:
                 "coupon_price": prices.get("coupon_price"),
                 "shipping_fee": prices.get("shipping_fee"),
                 "estimated_total": prices.get("estimated_total"),
+                "estimated_total_calculation": quote.get("estimated_total", {}).get("calculation"),
+                "quote_context_hash": quote.get("quote_context_hash"),
                 "comparison_price": quote.get("comparison_price"),
+                "manual_review_required": quote.get("manual_review_required"),
+                "excluded_from_lowest_price": quote.get("excluded_from_lowest_price"),
                 "eligible_for_lowest_price": quote.get("eligible_for_lowest_price"),
                 "url": quote.get("url"),
             }
@@ -417,13 +491,14 @@ def render_price_report(model: dict[str, Any]) -> str:
         lines.extend(["## Lowest Eligible Quote", "", "No eligible final lowest quote. Manual review required.", ""])
 
     lines.extend(["## Quotes", ""])
-    lines.append("| Quote | Platform | Seller | Stock | Match | Total | Eligible | Source |")
-    lines.append("| --- | --- | --- | --- | ---: | ---: | --- | --- |")
+    lines.append("| Quote | Platform | Seller | Stock | Match | Total | Calculation | Eligible | Source |")
+    lines.append("| --- | --- | --- | --- | ---: | ---: | --- | --- | --- |")
     for quote in model["quotes"]:
         lines.append(
             f"| {quote['quote_id']} | {quote.get('platform') or 'Unknown'} | {quote.get('seller') or 'Unknown'} | "
             f"{quote.get('stock') or 'Unknown'} | {quote.get('match_confidence', 0):.2f} | "
-            f"{_money(quote.get('comparison_price'), currency)} | {quote.get('eligible_for_lowest_price')} | "
+            f"{_money(quote.get('comparison_price'), currency)} | {quote.get('estimated_total', {}).get('calculation', 'unknown')} | "
+            f"{quote.get('eligible_for_lowest_price')} | "
             f"[{quote.get('source_id')}]({quote.get('url')}) |"
         )
     lines.append("")

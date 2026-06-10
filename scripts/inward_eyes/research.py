@@ -7,6 +7,7 @@ from typing import Any
 
 CLAIM_TYPES = {"fact", "inference", "unknown"}
 SUPPORT_TYPES = {"direct", "inferred"}
+CLAIM_ROLES = {"key_claim", "background", "method_note", "unknown", "limitation"}
 
 
 def source_dir_name(source_id: str) -> str:
@@ -38,6 +39,14 @@ def normalize_source(raw_source: dict[str, Any], index: int, accessed_at: str) -
     screenshot_policy = raw_source.get("screenshot_policy")
     if not isinstance(screenshot_policy, dict):
         screenshot_policy = default_screenshot_policy(page_type, requires_login)
+    independence = raw_source.get("independence")
+    if not isinstance(independence, dict):
+        source_type = str(raw_source.get("source_type") or "unknown")
+        independence = {
+            "status": "primary_source" if source_type in {"primary", "project_contract", "project_plan"} else "unknown",
+            "related_to": None,
+            "reason": raw_source.get("independence_note") or "not_declared",
+        }
 
     evidence_dir = source_dir_name(source_id)
     screenshot = raw_source.get("screenshot")
@@ -71,6 +80,7 @@ def normalize_source(raw_source: dict[str, Any], index: int, accessed_at: str) -
             or ["ads", "navigation", "recommendations", "comments_unless_relevant"],
         },
         "independence_note": raw_source.get("independence_note"),
+        "independence": independence,
         "notes": raw_source.get("notes"),
         "warnings": _strings(raw_source.get("warnings")),
     }
@@ -95,12 +105,14 @@ def source_record_from_summary(source: dict[str, Any]) -> dict[str, Any]:
         "content_scope": source.get("content_scope")
         or {"included": ["task_relevant_content"], "excluded": []},
         "independence_note": source.get("independence_note"),
+        "independence": source.get("independence") or {"status": "unknown", "related_to": None, "reason": "not_declared"},
         "warnings": _strings(source.get("warnings")),
     }
 
 
 def normalize_claim(raw_claim: dict[str, Any], index: int) -> dict[str, Any]:
     claim_type = str(raw_claim.get("claim_type") or "fact")
+    claim_role = str(raw_claim.get("claim_role") or ("unknown" if claim_type == "unknown" else "key_claim" if raw_claim.get("is_key_finding", True) else "background"))
     source_ids = _strings(raw_claim.get("source_ids"))
     support: list[dict[str, Any]] = []
     for item in _as_list(raw_claim.get("support")):
@@ -111,6 +123,7 @@ def normalize_claim(raw_claim: dict[str, Any], index: int) -> dict[str, Any]:
                 "source_id": str(item.get("source_id") or ""),
                 "support_type": str(item.get("support_type") or item.get("type") or "direct"),
                 "excerpt": item.get("excerpt"),
+                "evidence_note": item.get("evidence_note") or item.get("note") or item.get("excerpt"),
                 "note": item.get("note"),
             }
         )
@@ -118,12 +131,16 @@ def normalize_claim(raw_claim: dict[str, Any], index: int) -> dict[str, Any]:
     return {
         "claim_id": str(raw_claim.get("claim_id") or f"C{index:03d}"),
         "text": str(raw_claim.get("text") or ""),
+        "claim": str(raw_claim.get("claim") or raw_claim.get("text") or ""),
+        "claim_role": claim_role,
         "claim_type": claim_type,
         "is_key_finding": bool(raw_claim.get("is_key_finding", True)),
         "source_ids": source_ids,
         "support": support,
         "single_source": bool(raw_claim.get("single_source", len(source_ids) == 1)),
         "confidence": str(raw_claim.get("confidence") or ("unknown" if claim_type == "unknown" else "medium")),
+        "sources_checked": _strings(raw_claim.get("sources_checked")),
+        "requires_manual_review": bool(raw_claim.get("requires_manual_review")),
         "notes": raw_claim.get("notes"),
     }
 
@@ -135,11 +152,13 @@ def unknown_to_claim(raw_unknown: dict[str, Any], index: int) -> dict[str, Any]:
             "claim_id": claim_id,
             "text": raw_unknown.get("text"),
             "claim_type": "unknown",
+            "claim_role": "unknown",
             "is_key_finding": True,
             "source_ids": raw_unknown.get("source_ids") or raw_unknown.get("related_source_ids") or [],
             "support": raw_unknown.get("support") or [],
             "single_source": False,
             "confidence": "unknown",
+            "sources_checked": raw_unknown.get("sources_checked") or raw_unknown.get("related_source_ids") or [],
             "notes": raw_unknown.get("notes") or raw_unknown.get("reason"),
         },
         index,
@@ -216,8 +235,8 @@ def render_research_report(model: dict[str, Any]) -> str:
             source_ids = claim.get("source_ids") or []
             single_source = " single-source" if claim.get("single_source") else ""
             lines.append(
-                f"- **{claim['claim_id']}** ({claim['claim_type']}, {claim['confidence']}{single_source}) "
-                f"{claim['text']} {_source_marker(source_ids)}"
+                f"- **{claim['claim_id']}** ({claim.get('claim_role', 'key_claim')}, {claim['claim_type']}, "
+                f"{claim['confidence']}{single_source}) {claim['text']} {_source_marker(source_ids)}"
             )
             for support in claim.get("support") or []:
                 source_id = support.get("source_id") or "unknown"
@@ -239,12 +258,13 @@ def render_research_report(model: dict[str, Any]) -> str:
         lines.append("")
 
     lines.extend(["## Sources", ""])
-    lines.append("| Source | Type | Title | Evidence |")
-    lines.append("| --- | --- | --- | --- |")
+    lines.append("| Source | Type | Independence | Title | Evidence |")
+    lines.append("| --- | --- | --- | --- | --- |")
     for source in model["sources"]:
         title = str(source.get("title") or "Unknown title").replace("|", "\\|")
+        independence = source.get("independence", {}).get("status", "unknown")
         lines.append(
-            f"| [{source['source_id']}]({source['url']}) | {source.get('source_type') or 'unknown'} | "
+            f"| [{source['source_id']}]({source['url']}) | {source.get('source_type') or 'unknown'} | {independence} | "
             f"{title} | {source.get('evidence_status') or 'unknown'} |"
         )
     lines.append("")
@@ -269,6 +289,13 @@ def render_source_notes(model: dict[str, Any]) -> str:
         lines.append(f"- Evidence status: {source.get('evidence_status') or 'unknown'}")
         if source.get("independence_note"):
             lines.append(f"- Independence note: {source['independence_note']}")
+        if source.get("independence"):
+            independence = source["independence"]
+            lines.append(f"- Independence: {independence.get('status', 'unknown')}")
+            if independence.get("related_to"):
+                lines.append(f"- Related to: {independence['related_to']}")
+            if independence.get("reason"):
+                lines.append(f"- Independence reason: {independence['reason']}")
         if source.get("notes"):
             lines.append(f"- Notes: {source['notes']}")
         warnings = source.get("warnings") or []

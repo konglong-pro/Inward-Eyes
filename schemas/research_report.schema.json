@@ -52,6 +52,7 @@
           "accessed_at",
           "evidence_status",
           "evidence_path",
+          "independence",
           "screenshot_policy",
           "content_scope"
         ],
@@ -100,6 +101,36 @@
           "evidence_path": {
             "type": "string"
           },
+          "independence": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "independent",
+                  "not_independent",
+                  "unknown",
+                  "primary_source"
+                ]
+              },
+              "related_to": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true
+          },
           "screenshot_policy": {
             "type": "object"
           },
@@ -123,6 +154,7 @@
         "required": [
           "claim_id",
           "text",
+          "claim_role",
           "claim_type",
           "is_key_finding",
           "source_ids",
@@ -136,6 +168,16 @@
           },
           "text": {
             "type": "string"
+          },
+          "claim_role": {
+            "type": "string",
+            "enum": [
+              "key_claim",
+              "background",
+              "method_note",
+              "unknown",
+              "limitation"
+            ]
           },
           "claim_type": {
             "type": "string",
@@ -179,6 +221,12 @@
                     "null"
                   ]
                 },
+                "evidence_note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "note": {
                   "type": [
                     "string",
@@ -194,6 +242,15 @@
           },
           "confidence": {
             "type": "string"
+          },
+          "sources_checked": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requires_manual_review": {
+            "type": "boolean"
           },
           "notes": {
             "type": [

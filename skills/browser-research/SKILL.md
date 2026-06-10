@@ -17,6 +17,22 @@ Accept one of:
 
 Do not begin with broad crawling. Search public pages only when the user explicitly asks for discovery and the scope is small.
 
+## Modes
+
+### synthesize_provided_sources
+
+Use when the user gives URLs, source records, page captures, or local research input JSON. Do not search for new sources unless the user explicitly asks.
+
+### small_scope_discovery
+
+Use only when the user explicitly asks to find sources. Limit scope before browsing:
+
+- topic
+- allowed domains or source types
+- maximum source count
+- recency requirements
+- excluded source types
+
 ## Required Outputs
 
 Create a run directory outside the plugin package:
@@ -41,12 +57,26 @@ Create a run directory outside the plugin package:
 5. Separate source notes from final claims.
 6. Write `claims.json` before rendering prose.
 7. Type each claim as `fact`, `inference`, or `unknown`.
-8. Give every key fact or inference one or more `source_id` values and support entries.
-9. Mark single-source findings with `single_source=true`.
-10. Keep direct support and inferred support distinct.
-11. List unknowns explicitly rather than hiding them in prose.
-12. Render `report.md`, `sources.csv`, and `source_notes.md` from structured data.
-13. Run validation and do not mark the report complete if unsupported claims remain.
+8. Assign `claim_role` as `key_claim`, `background`, `method_note`, `unknown`, or `limitation`.
+9. Give every key fact or inference one or more `source_id` values and support entries.
+10. Mark single-source findings with `single_source=true`.
+11. Record source independence as `primary_source`, `independent`, `not_independent`, or `unknown`.
+12. Keep direct support and inferred support distinct.
+13. List unknowns explicitly rather than hiding them in prose.
+14. Render `report.md`, `sources.csv`, and `source_notes.md` from structured data.
+15. Run validation and do not mark the report complete if unsupported claims remain.
+
+## Claim Roles
+
+- `key_claim`: must have source support.
+- `background`: should have source support; missing support is a warning.
+- `method_note`: does not require external source support.
+- `unknown`: requires checked sources or an explanation.
+- `limitation`: requires a reason.
+
+## Completion Status
+
+Use `complete`, `partial`, `failed`, or `aborted_by_policy` consistently with the run manifest. Inferred support, unknown source independence, or non-independent sources usually make the run `partial`, not `complete`.
 
 ## Hard Rules
 

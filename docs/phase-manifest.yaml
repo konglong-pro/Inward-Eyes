@@ -1,7 +1,7 @@
 current:
   inward_eyes:
     phase_id: m4_m5_price_pluginization_mvp
-    title: "M0-M5 MVP closed; adapters and distribution not active"
+    title: "v0.2 local deterministic MVP closed; browser adapters and distribution not active"
     status: completed
     canonical_spec: docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md
     agent_rules: docs/agents/current/browser-operator-agent-rules.md
@@ -49,4 +49,12 @@ phases:
     closeout: docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md
     evidence: []
     supersedes: []
+    superseded_by: null
+  m6_browser_capture_adapter_mvp:
+    status: next
+    canonical_spec: docs/planning/next/m6-browser-capture-adapter-mvp.md
+    closeout: null
+    evidence: []
+    supersedes:
+      - m4_m5_price_pluginization_mvp
     superseded_by: null

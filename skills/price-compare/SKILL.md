@@ -34,21 +34,59 @@ Create a run directory outside the plugin package:
 
 ## Procedure
 
-1. Confirm target product, required specs, region, currency, allowed URLs, and output directory.
+1. Resolve scope without asking when possible:
+   - If product URLs are provided, use only those URLs.
+   - If required specs are provided, use them as the target identity.
+   - If region or currency is omitted, use page-visible/default context and mark `region_source` or `currency_source`.
+   - If output root is omitted, use `browser-operator-runs/` under the workspace.
+   - Ask only when product identity is ambiguous, required specs are missing, multiple regions/currencies are possible, output root is not writable, or a Yellow action is required.
 2. Classify browser actions with `docs/contracts/safety-contract.md`.
-3. Candidate discovery:
+3. Provided URL candidate assessment:
+   - For each provided URL or captured product record, extract product identity fields.
+   - Do not search for additional candidates.
    - Gather product name, model number, specs, platform, seller, condition, URL, provisional price, and `match_confidence`.
    - Route low-confidence or incomplete spec matches to manual review.
 4. Quote extraction:
    - Confirm selected specs.
    - Extract list price, sale price, coupon price, shipping fee, estimated total, stock, seller, region, currency, condition, URL, and timestamp.
+   - Record `quote_context`, `quote_context_hash`, and `estimated_total.calculation`.
    - Capture screenshot evidence for product pages.
 5. Keep product names and product specs separate.
 6. Keep list price, sale price, coupon price, shipping fee, and estimated total separate.
 7. Mark coupon, cart, checkout, membership, and address-change requirements explicitly.
-8. Exclude low-confidence, incomplete-spec, out-of-stock, unknown-total, cart/checkout/coupon-claim, and address-change quotes from final lowest-price conclusions.
+8. Exclude low-confidence, incomplete-spec, out-of-stock, unknown-total, cart/checkout/coupon-claim, address-change, incompatible context, and manual-review-required quotes from final lowest-price conclusions.
 9. Render CSV, Markdown report, anomalies, and chart from validated structured data.
 10. Do not mark a run complete if validation fails.
+
+Future broad discovery is out of scope for this skill version.
+
+## Quote Context
+
+Every quote should include:
+
+- `quote_context.platform`
+- `quote_context.region`
+- `quote_context.currency`
+- `quote_context.seller_type`
+- `quote_context.condition`
+- `quote_context.selected_specs`
+- `quote_context.membership_required`
+- `quote_context.coupon_action_required`
+- `quote_context.cart_required`
+- `quote_context.checkout_required`
+- `quote_context.shipping_known`
+- `quote_context.stock_status`
+- `quote_context_hash`
+
+Lowest-price conclusions require the same product group, normalized required specs, compatible quote context, `match_confidence >= threshold`, `manual_review_required=false`, and `excluded_from_lowest_price=false`.
+
+## Estimated Total
+
+`estimated_total` must explain itself with `amount`, `currency`, `calculation`, `components`, `confidence`, and `warnings`. Do not treat page-visible "coupon price", "estimated total", "membership price", or "cart price" as interchangeable.
+
+## Completion Status
+
+Use `complete`, `partial`, `failed`, or `aborted_by_policy` consistently with the run manifest. Any quote requiring cart, checkout, coupon claiming, address change, missing screenshot evidence, or unsupported context must not produce a complete lowest-price conclusion.
 
 ## Hard Rules
 

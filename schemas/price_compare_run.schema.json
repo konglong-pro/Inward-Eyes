@@ -129,12 +129,17 @@
           "condition",
           "stock",
           "prices",
+          "estimated_total",
+          "quote_context",
+          "quote_context_hash",
           "match_confidence",
           "selected_specs_confirmed",
           "flags",
           "screenshot_policy",
           "screenshot",
           "anomalies",
+          "manual_review_required",
+          "excluded_from_lowest_price",
           "eligible_for_lowest_price"
         ],
         "additionalProperties": true

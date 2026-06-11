@@ -36,6 +36,7 @@
       "type": "object",
       "required": [
         "url",
+        "page_title",
         "requires_login"
       ],
       "properties": {
@@ -50,10 +51,8 @@
           ]
         },
         "page_title": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "minLength": 1
         },
         "site_name": {
           "type": [
@@ -106,6 +105,12 @@
     },
     "content": {
       "type": "object",
+      "required": [
+        "html",
+        "text",
+        "accessibility_snapshot",
+        "selected_main_content"
+      ],
       "properties": {
         "html": {
           "type": [
@@ -138,9 +143,32 @@
     },
     "assets": {
       "type": "object",
+      "required": [
+        "screenshots",
+        "images"
+      ],
       "properties": {
         "screenshots": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "captured_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
         },
         "images": {
           "type": "array"

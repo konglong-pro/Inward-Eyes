@@ -373,7 +373,6 @@ def source_record_from_quote(quote: dict[str, Any]) -> dict[str, Any]:
         "accessed_at": quote["accessed_at"],
         "requires_login": False,
         "capture_method": "price_compare_input",
-        "evidence_status": "source_record_present",
         "evidence": {
             "screenshot": quote.get("screenshot"),
             "snapshot": None,

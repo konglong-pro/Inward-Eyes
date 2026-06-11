@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,8 @@ from inward_eyes.html_extract import extract_html
 from inward_eyes.io import read_json, relative_to, utc_now, write_json, write_text
 from inward_eyes.markdown import render_page_markdown
 from inward_eyes.validation import validate_page_to_md_run
+
+SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
 def _slug_timestamp(timestamp: str) -> str:
@@ -63,6 +66,15 @@ def ast_title(ast: dict[str, Any]) -> str | None:
     return title if isinstance(title, str) else None
 
 
+def is_page_capture(data: Any) -> bool:
+    return (
+        isinstance(data, dict)
+        and isinstance(data.get("source"), dict)
+        and isinstance(data.get("content"), dict)
+        and "capture_id" in data
+    )
+
+
 def screenshot_policy_for(
     capture: dict[str, Any],
     page_type: str,
@@ -80,6 +92,79 @@ def screenshot_policy_for(
     if page_type in {"x_thread", "forum_thread", "product_page"}:
         return {"required": True, "reason": page_type, "status": "required_but_missing"}
     return {"required": False, "reason": "static_public_article", "status": "not_required"}
+
+
+def _safe_asset_name(raw_name: str, index: int) -> str:
+    path = Path(raw_name)
+    suffix = path.suffix.lower()
+    if suffix not in SCREENSHOT_EXTENSIONS:
+        suffix = ".png"
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", path.stem).strip(".-") or f"screenshot-{index:03d}"
+    return f"{index:03d}-{stem}{suffix}"
+
+
+def _capture_asset_roots(input_path: Path) -> list[Path]:
+    roots = [input_path.parent]
+    if input_path.parent.name == "capture":
+        roots.append(input_path.parent.parent)
+    return list(dict.fromkeys(root.resolve() for root in roots))
+
+
+def _resolve_capture_asset(raw_path: str, input_path: Path) -> Path | None:
+    if not raw_path or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_path):
+        return None
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path.resolve() if path.exists() else None
+    for root in _capture_asset_roots(input_path):
+        candidate = (root / path).resolve()
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def stage_capture_screenshots(
+    capture: dict[str, Any] | None,
+    input_path: Path,
+    run_dir: Path,
+    accessed_at: str,
+    warnings: list[str],
+) -> list[dict[str, Any]]:
+    if not capture:
+        return []
+    assets = capture.get("assets") if isinstance(capture.get("assets"), dict) else {}
+    raw_screenshots = assets.get("screenshots") if isinstance(assets.get("screenshots"), list) else []
+    staged: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_screenshots, start=1):
+        if isinstance(item, str):
+            raw_path = item
+            captured_at = accessed_at
+        elif isinstance(item, dict):
+            raw_path = str(item.get("path") or "")
+            captured_at = str(item.get("captured_at") or accessed_at)
+        else:
+            warnings.append(f"screenshot_asset_invalid:{index}")
+            continue
+        source_path = _resolve_capture_asset(raw_path, input_path)
+        if source_path is None:
+            warnings.append(f"screenshot_asset_missing:{raw_path}")
+            continue
+        if source_path.suffix.lower() not in SCREENSHOT_EXTENSIONS:
+            warnings.append(f"screenshot_asset_unsupported_extension:{raw_path}")
+            continue
+        destination = run_dir / "evidence" / "screenshots" / _safe_asset_name(raw_path, index)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source_path.resolve() != destination.resolve():
+            shutil.copy2(source_path, destination)
+        staged.append(
+            {
+                "type": "screenshot",
+                "path": relative_to(destination, run_dir),
+                "captured_at": captured_at,
+                "source_path": raw_path,
+            }
+        )
+    return staged
 
 
 def text_to_capture(text: str, source: dict[str, Any]) -> dict[str, Any]:
@@ -210,6 +295,8 @@ def build_source_record(metadata: dict[str, Any], run_dir: Path) -> dict[str, An
     source = metadata["source"]
     extraction = metadata["extraction"]
     page_type = metadata["document"]["page_type"]
+    screenshot_assets = [asset for asset in metadata.get("assets", []) if asset.get("type") == "screenshot"]
+    screenshot_path = screenshot_assets[0]["path"] if screenshot_assets else None
     return {
         "source_id": "S001",
         "url": source["url"],
@@ -221,7 +308,7 @@ def build_source_record(metadata: dict[str, Any], run_dir: Path) -> dict[str, An
         "requires_login": source["requires_login"],
         "capture_method": extraction["method"],
         "evidence": {
-            "screenshot": None,
+            "screenshot": screenshot_path,
             "snapshot": None,
             "source_record": "evidence/source_record.json",
         },
@@ -251,6 +338,8 @@ def create_manifest(
     input_record: dict[str, Any],
     validation_report: dict[str, Any] | None,
     warnings: list[str],
+    capture_path: str | None = None,
+    evidence_assets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     validation = validation_report or {
         "status": "pending",
@@ -266,9 +355,19 @@ def create_manifest(
         "completion_blockers": [],
     }
     report_path = "validation/validation-report.json"
-    evidence = [
-        {"id": "E001", "type": "source_record", "path": "evidence/source_record.json"},
-    ]
+    evidence = []
+    if capture_path:
+        evidence.append({"id": "C001", "type": "page_capture", "path": capture_path})
+    evidence.append({"id": "E001", "type": "source_record", "path": "evidence/source_record.json"})
+    for index, asset in enumerate(evidence_assets or [], start=1):
+        evidence.append(
+            {
+                "id": f"S{index:03d}",
+                "type": asset.get("type", "screenshot"),
+                "path": asset["path"],
+                "captured_at": asset.get("captured_at"),
+            }
+        )
     if validation_report is not None:
         evidence.append({"id": "V001", "type": "validation_report", "path": "validation/validation-report.json"})
 
@@ -318,7 +417,21 @@ def run(args: argparse.Namespace) -> Path:
     (run_dir / "evidence").mkdir(parents=True, exist_ok=True)
     (run_dir / "validation").mkdir(parents=True, exist_ok=True)
 
-    source_url = args.url or input_path.as_uri()
+    raw_json: dict[str, Any] | None = None
+    if input_path.suffix.lower() == ".json":
+        loaded_json = read_json(input_path)
+        if not isinstance(loaded_json, dict):
+            raise SystemExit("JSON input must be an object")
+        raw_json = loaded_json
+
+    capture_input = raw_json if is_page_capture(raw_json) else None
+    capture_source_url = None
+    if capture_input:
+        capture_source = capture_input.get("source", {})
+        if isinstance(capture_source, dict):
+            capture_source_url = capture_source.get("url")
+
+    source_url = args.url or capture_source_url or input_path.as_uri()
     input_record = {
         "input_path": str(input_path),
         "source_url": source_url,
@@ -327,8 +440,14 @@ def run(args: argparse.Namespace) -> Path:
     }
     write_json(run_dir / "input.json", input_record)
 
-    if input_path.suffix.lower() == ".json":
-        capture = normalize_page_capture(read_json(input_path), source_url)
+    capture_path: str | None = None
+    if raw_json is not None:
+        if capture_input:
+            capture_path = "capture/page_capture.json"
+            write_json(run_dir / capture_path, capture_input)
+            input_record["capture_path"] = capture_path
+            write_json(run_dir / "input.json", input_record)
+        capture = normalize_page_capture(raw_json, source_url)
     else:
         html = input_path.read_text(encoding=args.encoding)
         capture = extract_html(html, source_url)
@@ -336,6 +455,10 @@ def run(args: argparse.Namespace) -> Path:
     ast_for_classification = capture.get("document_ast", {})
     page_type = classify_page_type(source_url, ast_for_classification, args.page_type)
     metadata, ast, warnings = normalize_capture(capture, source_url, page_type, args.requires_login, started_at)
+    staged_screenshots = stage_capture_screenshots(capture_input, input_path, run_dir, started_at, warnings)
+    metadata["assets"] = staged_screenshots
+    metadata["extraction"]["warnings"] = list(dict.fromkeys(warnings))
+    ast["warnings"] = list(dict.fromkeys(warnings))
     input_record["screenshot_policy"] = metadata["extraction"]["screenshot_policy"]
 
     source_record = build_source_record(metadata, run_dir)
@@ -347,17 +470,47 @@ def run(args: argparse.Namespace) -> Path:
     write_text(run_dir / "artifacts" / "page.md", markdown)
     write_warnings(run_dir / "validation" / "warnings.md", warnings)
 
-    draft_manifest = create_manifest(run_dir, run_id, started_at, utc_now(), input_record, None, warnings)
+    draft_manifest = create_manifest(
+        run_dir,
+        run_id,
+        started_at,
+        utc_now(),
+        input_record,
+        None,
+        warnings,
+        capture_path,
+        staged_screenshots,
+    )
     write_json(run_dir / "manifest.json", draft_manifest)
 
     validation_report = validate_page_to_md_run(run_dir)
     write_json(run_dir / "validation" / "validation-report.json", validation_report)
 
-    final_manifest = create_manifest(run_dir, run_id, started_at, utc_now(), input_record, validation_report, warnings)
+    final_manifest = create_manifest(
+        run_dir,
+        run_id,
+        started_at,
+        utc_now(),
+        input_record,
+        validation_report,
+        warnings,
+        capture_path,
+        staged_screenshots,
+    )
     write_json(run_dir / "manifest.json", final_manifest)
     final_validation_report = validate_page_to_md_run(run_dir)
     write_json(run_dir / "validation" / "validation-report.json", final_validation_report)
-    final_manifest = create_manifest(run_dir, run_id, started_at, utc_now(), input_record, final_validation_report, warnings)
+    final_manifest = create_manifest(
+        run_dir,
+        run_id,
+        started_at,
+        utc_now(),
+        input_record,
+        final_validation_report,
+        warnings,
+        capture_path,
+        staged_screenshots,
+    )
     write_json(run_dir / "manifest.json", final_manifest)
     print(run_dir)
     return run_dir

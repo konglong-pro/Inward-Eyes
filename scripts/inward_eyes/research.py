@@ -93,19 +93,15 @@ def source_record_from_summary(source: dict[str, Any]) -> dict[str, Any]:
         "canonical_url": source.get("canonical_url"),
         "title": source.get("title"),
         "site_name": source.get("site_name"),
-        "source_type": source.get("source_type"),
         "page_type": source.get("page_type") or "unknown",
         "accessed_at": source["accessed_at"],
         "requires_login": bool(source.get("requires_login")),
         "capture_method": source.get("capture_method") or "research_input",
-        "evidence_status": source.get("evidence_status"),
         "evidence": source.get("evidence") or {},
         "screenshot_policy": source.get("screenshot_policy")
         or {"required": False, "reason": "unknown", "status": "not_required"},
         "content_scope": source.get("content_scope")
         or {"included": ["task_relevant_content"], "excluded": []},
-        "independence_note": source.get("independence_note"),
-        "independence": source.get("independence") or {"status": "unknown", "related_to": None, "reason": "not_declared"},
         "warnings": _strings(source.get("warnings")),
     }
 

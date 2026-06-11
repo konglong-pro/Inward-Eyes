@@ -8,16 +8,21 @@ Testing for Inward Eyes must prove that outputs are structured, evidence-backed,
 
 Run from `E:\Inward Eyes`.
 
-The current release class is local deterministic MVP. CI covers repository-contained local workflows, not real browser adapters.
+The current release class is M6 adapter-boundary MVP. CI covers repository-contained local workflows and synthetic adapter contract tests, not live browser/network smoke tests.
 
 - Compile check: `python -m py_compile scripts\page_to_md_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\inward_eyes\__init__.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py evals\run_eval.py evals\run_safety_eval.py`
 - M3 research compile check: `python -m py_compile scripts\browser_research_runner.py scripts\validation\validate_browser_research.py scripts\inward_eyes\research.py scripts\inward_eyes\validation.py evals\run_research_eval.py`
 - M4 price compile check: `python -m py_compile scripts\price_compare_runner.py scripts\validation\validate_price_compare.py scripts\inward_eyes\price.py scripts\inward_eyes\validation.py evals\run_price_eval.py`
+- M6 capture adapter compile check: `python -m py_compile scripts\capture\playwright_mcp_capture.py scripts\capture\page_to_md_browser_runner.py scripts\validation\validate_page_capture.py scripts\inward_eyes\capture.py evals\run_capture_adapter_eval.py evals\run_cross_skill_schema_eval.py`
 - Eval runner: `python evals\run_eval.py`
 - Safety eval runner: `python evals\run_safety_eval.py`
 - Research eval runner: `python evals\run_research_eval.py`
 - Price eval runner: `python evals\run_price_eval.py`
+- Capture adapter eval runner: `python evals\run_capture_adapter_eval.py`
+- Cross-skill schema reuse eval runner: `python evals\run_cross_skill_schema_eval.py`
+- M6 wrapper runner: `python scripts\capture\page_to_md_browser_runner.py --url <public-url> --run-id <run-id> --output-root <output-root>`
 - Validate one page-to-md run: `python scripts\validation\validate_page_to_md.py <run_dir>`
+- Validate one page capture: `python scripts\validation\validate_page_capture.py <run_dir>\capture\page_capture.json`
 - Validate one browser-research run: `python scripts\validation\validate_browser_research.py <run_dir>`
 - Validate one price-compare run: `python scripts\validation\validate_price_compare.py <run_dir>`
 - Minimal schema validation: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>`
@@ -55,6 +60,16 @@ Every generated JSON artifact must validate against its schema:
 - `validation_report`
 - `run_manifest` status fields: `run_status`, `validation_status`, `manual_review`, and `completion_blockers`
 
+Cross-skill schema reuse must also prove that `page-to-md`, `browser-research`, and `price-compare` use the same shared object shapes:
+
+- `SourceRecord`
+- `RunManifest`
+- `ScreenshotPolicy`
+- `ManualReview`
+- `ValidationReport`
+
+The stable gate for this is `python evals\run_cross_skill_schema_eval.py`.
+
 ### Script Unit Tests
 
 Future deterministic scripts need focused tests:
@@ -90,6 +105,9 @@ Currently implemented:
 - price-compare valid quotes fixture
 - price-compare low-confidence exclusion fixture
 - price-compare missing screenshot fail fixture
+- M6 valid page capture contract fixture
+- M6 invalid capture contract fixtures for missing URL, missing title, no content payload, missing screenshot, non-public URL, redacted private data, and prompt injection text
+- M6 wrapper and screenshot-staging synthetic checks
 
 ### M2 Closeout Fixture Set
 

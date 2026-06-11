@@ -122,4 +122,20 @@ When working from a local HTML file or capture JSON, use:
 python scripts/page_to_md_runner.py --input <path> --url <source-url> --output-root <output-root>
 ```
 
+For the optional M6 Playwright MCP adapter boundary, use the wrapper when you want one command to run capture, capture validation, rendering, and run validation:
+
+```bash
+python scripts/capture/page_to_md_browser_runner.py --url <public-url> --output-root <output-root> --run-id <run-id>
+```
+
+When an approved browser tool has already produced observations, write those observations to capture JSON explicitly:
+
+```bash
+python scripts/capture/playwright_mcp_capture.py --url <public-url> --page-title "<observed-title>" --selected-main-content-file <text-file> --output-root <output-root> --run-id <run-id>
+python scripts/validation/validate_page_capture.py <output-root>/<run-id>/capture/page_capture.json
+python scripts/page_to_md_runner.py --input <output-root>/<run-id>/capture/page_capture.json --output-root <output-root> --run-id <run-id>
+```
+
+The capture script records Playwright MCP observations and can optionally use local Python Playwright when it is already installed. It does not install dependencies, enable MCP by default, attach a real Chrome profile, save cookies, save HAR files, or bypass approval.
+
 Use the project root as the working directory.

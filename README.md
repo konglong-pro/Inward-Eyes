@@ -23,9 +23,11 @@ Inward Eyes uses:
 
 ## Current Release
 
-Current release class: repository-contained small-scope discovery MVP.
+Current release class: post-M12-M20 local operations hardening.
 
-The current repository includes deterministic local runners plus adapter-boundary wrappers for approved browser captures and bounded discovery. Runtime browser operation remains tightly scoped and evidence-backed; marketplace distribution is not implemented.
+The current repository includes deterministic local runners plus adapter-boundary wrappers for approved browser captures and bounded discovery. It also includes local adapter matrix, replay eval, privacy, site profile, review, package dry-run, batch/retry/index, and export utilities. Runtime browser operation remains tightly scoped and evidence-backed; marketplace publication is not implemented.
+
+M11 froze public contracts for the existing M7-M10 workflow set. M12-M20 added deterministic local operations without adding skills or browser backends.
 
 Version semantics:
 
@@ -37,11 +39,11 @@ Version semantics:
 - `0.6.x`: `price-compare` provided product-URL quote capture MVP.
 - `0.7.x`: `browser-research` small-scope public source discovery MVP.
 - `0.8.x`: M10 small-scope discovery consolidation, including approved price candidate discovery.
-- `1.0.0`: stable browser-backed plugin, still read-only.
+- `1.0.0`: stable browser-backed plugin, still read-only. M11-M20 provide the release-candidate hardening and local operations baseline for this target.
 
 ## Current State
 
-M0-M10 small-scope evidence workflows are complete:
+M0-M20 are complete as the repository-contained baseline:
 
 - `page-to-md`: local HTML, page capture JSON, public URL adapter captures, and one user-approved current Chrome page capture to evidence-backed Markdown.
 - `browser-research`: local research input JSON, provided-URL capture, claim ledger validation, source records, reports, source notes, and M10A small-scope public source discovery.
@@ -54,7 +56,9 @@ Still not implemented:
 - automated purchasing, coupon claiming, cart, checkout, or address/account mutation
 - unrestricted logged-in browsing
 - stealth, proxy, CAPTCHA, or anti-bot bypass workflows
-- marketplace distribution package
+- marketplace publication
+- new browser backends
+- dynamic third-party extensions
 
 Closeouts:
 
@@ -66,6 +70,15 @@ Closeouts:
 - `docs/planning/archive/m8-research-provided-url-capture-mvp-closeout.md`
 - `docs/planning/archive/m9-price-product-url-capture-mvp-closeout.md`
 - `docs/planning/archive/m10-small-scope-discovery-closeout.md`
+
+Latest closeout and contract docs:
+
+- `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`
+- `docs/contracts/artifact-contracts.md`
+- `docs/contracts/error-status-contract.md`
+- `docs/contracts/schemas-and-validation-contract.md`
+- `docs/contracts/site-profile-contract.md`
+- `docs/contracts/runtime-operations-contract.md`
 
 Read:
 
@@ -99,11 +112,25 @@ Run from the repository root.
 
 - Install: no install step yet; first implementation uses Python standard library only.
 - Compile check: see `docs/testing.md`.
-- Run evals: `python evals/run_eval.py`
+- Full release gate: see `docs/testing.md`.
+- Run page-to-md evals: `python evals/run_eval.py`
+- Run safety evals: `python evals/run_safety_eval.py`
 - Run research evals: `python evals/run_research_eval.py`
 - Run research discovery evals: `python evals/run_research_discovery_eval.py`
+- Run research capture evals: `python evals/run_research_capture_eval.py`
 - Run price evals: `python evals/run_price_eval.py`
 - Run price candidate discovery evals: `python evals/run_price_candidate_discovery_eval.py`
+- Run price capture evals: `python evals/run_price_capture_eval.py`
+- Run capture adapter evals: `python evals/run_capture_adapter_eval.py`
+- Run cross-skill schema evals: `python evals/run_cross_skill_schema_eval.py`
+- Run adapter matrix evals: `python evals/run_adapter_matrix_eval.py`
+- Run real-world replay evals: `python evals/run_real_world_eval.py`
+- Run privacy evals: `python evals/run_privacy_eval.py`
+- Run site profile evals: `python evals/run_site_profile_eval.py`
+- Run review UI evals: `python evals/run_review_ui_eval.py`
+- Run distribution evals: `python evals/run_distribution_eval.py`
+- Run batch/retry evals: `python evals/run_batch_retry_eval.py`
+- Run export evals: `python evals/run_export_eval.py`
 - Validate one page-to-md run: `python scripts/validation/validate_page_to_md.py <run_dir>`
 - Validate one browser-research run: `python scripts/validation/validate_browser_research.py <run_dir>`
 - Validate one research discovery run: `python scripts/validation/validate_research_discovery.py <run_dir>`
@@ -111,7 +138,7 @@ Run from the repository root.
 - Validate one price-compare run: `python scripts/validation/validate_price_compare.py <run_dir>`
 - Validate JSON against schema: `python scripts/validation/validate_json_schema.py --schema <schema-path> --json <json-path>`
 - Validate plugin: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
-- Build/package plugin: not implemented yet.
+- Build/package dry-run: `python scripts\plugin_package.py --output-dir dist`
 
 ## Safety Baseline
 

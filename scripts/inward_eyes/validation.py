@@ -232,7 +232,7 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
         "status": status,
         "errors": errors,
         "warnings": warnings,
-        "requires_manual_review": manual_review,
+        "requires_manual_review": manual_review or bool(errors),
         "screenshot_policy": _field(metadata or {}, "extraction.screenshot_policy") or {"required": False, "reason": "unknown", "status": "not_required"},
         **_status_fields(status, warnings, manual_review, reasons, errors),
     }

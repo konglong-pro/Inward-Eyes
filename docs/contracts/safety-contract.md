@@ -84,3 +84,5 @@ Every skill must report:
 - Red actions encountered and skipped.
 - Sensitive data warnings.
 - Manual review requirements.
+
+M14 adds broader static classifier coverage and privacy scanning gates. Known dangerous browser/session export actions must be classified as Red rather than left as generic unknowns when possible. Privacy scans are conservative and complement, but do not replace, human screenshot review.

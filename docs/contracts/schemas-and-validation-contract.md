@@ -1,26 +1,71 @@
-﻿# Schemas and Validation Contract
+# Schemas and Validation Contract
 
 ## Purpose
 
-Inward Eyes must produce structured JSON first, then render Markdown, CSV, charts, and reports from validated data. This prevents unchecked model prose from becoming the source of truth.
+Inward Eyes must produce structured JSON first, then render Markdown, CSV, charts, and reports from validated data. v1.0 freezes the existing M7-M10 public schema surface and the M12-M20 local operational schema additions.
 
-## Planned Shared Schemas
+## Applies To
 
-- `source_record.schema.json`
-- `run_manifest.schema.json`
-- `page_capture.schema.json`
-- `page_to_md_metadata.schema.json`
-- `document_ast.schema.json`
-- `research_claim.schema.json`
-- `research_report.schema.json`
-- `research_discovery_input.schema.json`
-- `discovery_log.schema.json`
-- `price_candidate_discovery_input.schema.json`
-- `price_candidates.schema.json`
-- `price_record.schema.json`
-- `price_compare_run.schema.json`
+- JSON schemas under `schemas/`
+- Workflow validators under `scripts/validation/`
+- Domain validation helpers under `scripts/inward_eyes/`
+- Generated JSON artifacts in run directories
 
-In M2, only `run_manifest`, `source_record`, `page_capture`, `page_to_md_metadata`, `document_ast`, and validation reports are enforced. Research and price schemas may exist as planned placeholders until M3/M4.
+## v1.0 Schema Registry
+
+The v1.0 public schema set is:
+
+| Artifact | Schema | Version field |
+| --- | --- | --- |
+| RunManifest | `schemas/run_manifest.schema.json` | Versioned by schema `$id`; no required artifact-level `schema_version` in v1.0. |
+| SourceRecord | `schemas/source_record.schema.json` | Versioned by schema `$id`; no required artifact-level `schema_version` in v1.0. |
+| PageCapture | `schemas/page_capture.schema.json` | `schema_version` string, emitted as `1.0`. |
+| PageToMarkdownMetadata | `schemas/page_to_md_metadata.schema.json` | `schema_version` string, emitted as `1.0`. |
+| DocumentAST | `schemas/document_ast.schema.json` | `schema_version` string, emitted as `1.0`. |
+| ValidationReport | `schemas/validation_report.schema.json` | `schema_version` string, emitted as `1.0`. |
+| ResearchClaim | `schemas/research_claim.schema.json` | Versioned by schema `$id`; no required artifact-level `schema_version` in v1.0. |
+| ResearchReport / ClaimLedger | `schemas/research_report.schema.json` | `schema_version` string, emitted as `1.0`. |
+| ResearchDiscoveryInput | `schemas/research_discovery_input.schema.json` | Optional `schema_version` string when present. |
+| DiscoveryLog | `schemas/discovery_log.schema.json` | `schema_version` string, emitted as `1.0`. |
+| PriceCandidateDiscoveryInput | `schemas/price_candidate_discovery_input.schema.json` | Optional `schema_version` string when present. |
+| PriceCandidates | `schemas/price_candidates.schema.json` | `schema_version` string, emitted as `1.0`. |
+| PriceRecord | `schemas/price_record.schema.json` | Versioned by schema `$id`; no required artifact-level `schema_version` in v1.0. |
+| PriceCompareRun | `schemas/price_compare_run.schema.json` | `schema_version` string, emitted as `1.0`. |
+| SiteProfiles | `schemas/site_profiles.schema.json` | `schema_version` string, emitted as `1.0`. |
+
+Do not add new public schemas without a contract, eval, and generated-artifact validation gate.
+
+## Versioning Policy
+
+v1.0 uses schema `$id` plus artifact `schema_version` where the current artifact already exposes that field.
+
+Rules:
+
+- Producers must emit `schema_version: "1.0"` for artifacts whose schema includes `schema_version`.
+- Consumers and validators must treat missing top-level `schema_version` on RunManifest, SourceRecord, ResearchClaim, and PriceRecord as valid v1.0 behavior.
+- Adding optional fields is backward-compatible when existing required fields, meanings, paths, enum values, and status semantics remain unchanged.
+- Removing fields, renaming fields, changing field meaning, narrowing accepted enum values, or changing status semantics requires a v2 contract.
+- Widening enum values is allowed only when downstream validators ignore unknown values safely or are updated in the same release gate.
+- Deprecated fields must remain readable through the v1 lifecycle.
+- Extra fields are permitted by current schemas, but canonical docs, renderers, and validators must not depend on undocumented extras.
+
+## Backward Compatibility
+
+v1-compatible consumers should:
+
+- Require all v1 required fields.
+- Ignore unknown additional fields unless they conflict with safety, privacy, or evidence rules.
+- Preserve unknown fields when rewriting artifacts only if doing so does not leak private data.
+- Treat unrecognized `run_status`, `validation_status`, screenshot policy status, claim role, claim type, candidate status, or price eligibility fields as validation failures.
+- Prefer workflow-specific validators over permissive schema acceptance.
+
+v1-compatible producers should:
+
+- Write stable relative paths inside the run directory.
+- Keep SourceRecord and RunManifest shapes shared across skills.
+- Keep `source_id` references stable across artifacts.
+- Include explicit unknowns and warnings instead of silently omitting uncertain facts.
+- Keep screenshot policy explicit even when screenshots are not required.
 
 ## Required Artifact Pattern
 
@@ -28,142 +73,115 @@ For every skill:
 
 1. Capture source/evidence.
 2. Produce schema-shaped JSON.
-3. Validate JSON.
-4. Render human-readable artifacts from validated JSON.
-5. Write validation report.
+3. Run minimal structural schema checks where a schema exists.
+4. Run the workflow-specific validator.
+5. Render human-readable artifacts from validated JSON.
+6. Write validation reports and manifest status fields.
 
-## page-to-md Required Outputs
+## Required Outputs
 
-- `artifacts/page.md`
-- `artifacts/metadata.json`
-- `artifacts/document_ast.json`
-- `evidence/` screenshot when required
-- `validation/validation-report.json`
-- `manifest.json`
+Required output details live in `docs/contracts/artifact-contracts.md`.
 
-## browser-research Required Outputs
+Summary:
 
-- `artifacts/report.md`
-- `artifacts/claims.json`
-- `artifacts/sources.csv`
-- `artifacts/source_notes.md`
-- source evidence directories
-- `validation/claim-coverage-report.json`
-- `manifest.json`
+- `page-to-md`: page Markdown, metadata, DocumentAST, SourceRecord, validation report, manifest, and screenshot evidence when required.
+- `browser-research`: report, ClaimLedger, sources CSV, source notes, per-source evidence, claim coverage report, manifest, and M10A discovery artifacts when discovery runs.
+- `price-compare`: prices JSON/CSV/report/anomalies/chart, per-source evidence, price validation report, manifest, and M10B candidate artifacts when candidate discovery runs.
+- M12-M20 operations: adapter matrix, site profiles, privacy report, review summary, batch results, run index, distribution package manifest, and run exports.
 
-M10A discovery runs additionally require:
+## Validation Layers
 
-- `artifacts/discovery-log.json`
-- `artifacts/discovery-log.md`
-- `validation/discovery-validation-report.json`
+### Minimal Schema Validator
 
-M10B candidate discovery runs additionally require:
+Command:
 
-- `artifacts/candidates.json`
-- `artifacts/candidates.csv`
-- `artifacts/candidate-review.md`
-- `validation/candidate-validation-report.json`
-- `validation/warnings.md`
+```powershell
+python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>
+```
 
-When quote extraction proceeds, M10B must also produce the normal `price-compare` artifacts and `validation/price-validation-report.json`.
+Optional pointer validation:
 
-## price-compare Required Outputs
+```powershell
+python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path> --pointer /path/to/value
+```
 
-- `artifacts/prices.json`
-- `artifacts/prices.csv`
-- `artifacts/price-report.md`
-- `artifacts/anomalies.md`
-- optional chart artifacts after chart renderer exists
-- source screenshots
-- `validation/price-validation-report.json`
-- `manifest.json`
+Scope:
 
-## Validation Rules
+- Supports `type`, `required`, `properties`, `items`, `const`, `enum`, and `minLength`.
+- Supports JSON Pointer selection before validation.
+- Skips `$ref`.
+- Does not enforce `pattern`, numeric minimum/maximum, string format, `additionalProperties`, conditional schemas, `oneOf`, `anyOf`, or `allOf`.
 
-### Common
+Release meaning:
 
-- Required fields must exist.
-- URLs and source IDs must be consistent.
-- Artifact paths must exist.
-- Manifest artifact and evidence paths must exist.
-- Evidence requirements must be met.
-- Unknown fields must be explicit.
-- Run manifests must include `run_status`, `validation_status`, `manual_review`, and `completion_blockers`.
-- `run_status=complete` is allowed only when required schema, consistency, evidence, and screenshot policy checks pass.
-- `run_status=partial` is allowed for useful outputs that require manual review or fallback evidence.
-- `run_status=failed` is required for core schema, evidence, main content, claim support, or price record failures.
-- `run_status=aborted_by_policy` is required when a Red action or unapproved Yellow action blocks the task.
+- This validator is a structural smoke gate.
+- It is not a full JSON Schema implementation.
+- It must not be the only release gate for any workflow.
+- Workflow-specific validators are authoritative for v1 release readiness.
 
-### page-to-md
+### Workflow Validators
 
-- Metadata title exists or `title_not_found` warning exists.
-- Markdown contains one primary H1.
-- Metadata title and H1 are consistent.
-- Author and publish time are not invented.
-- Boilerplate pollution is checked.
-- Image captions are preserved or marked missing.
-- Logged-in, private-data, dynamic, thread, forum, ecommerce, ambiguous, and personal-context pages must satisfy screenshot policy with evidence on disk.
-- Staged screenshot evidence in the manifest must include a matching `sha256`.
-- Private-data warnings must force manual review.
-- Prompt-injection text from the page must be preserved as data, not treated as instructions.
-- Red actions or unapproved current-browser scope must produce `run_status=aborted_by_policy`.
+Authoritative validators:
 
-### browser-research
+- `scripts/validation/validate_page_to_md.py`
+- `scripts/validation/validate_page_capture.py`
+- `scripts/validation/validate_browser_research.py`
+- `scripts/validation/validate_research_discovery.py`
+- `scripts/validation/validate_price_candidate_discovery.py`
+- `scripts/validation/validate_price_compare.py`
+- `scripts/site_profile_runner.py`
+- `scripts/privacy_report_runner.py`
+- `scripts/review_run.py`
+- `scripts/batch_runner.py`
+- `scripts/export_run.py`
 
-- Every key finding has one or more source IDs.
-- Claims use `claim_role`: `key_claim`, `background`, `method_note`, `unknown`, or `limitation`.
-- Claim type is one of fact, inference, or unknown.
-- Direct support and inferred support are separate.
-- Sources table and claim ledger agree.
-- Duplicated syndications are not counted as independent sources without note.
-- Sources record independence as `primary_source`, `independent`, `not_independent`, or `unknown`.
-- Source evidence directories must agree with source IDs.
-- Key claims must not rely on failed source captures.
-- Non-independent or syndicated sources must not make a claim count as independently supported unless the claim is marked `single_source=true`.
-- Browser-captured source runs must keep `capture/source-###/page_capture.json`, `evidence/source-###/source_record.json`, `artifacts/claims.json`, `artifacts/sources.csv`, report, manifest, and validation report consistent.
-- Discovery runs must keep selected source count at or below `max_sources`.
-- Discovery `max_sources` must not exceed 20.
-- Discovery requires allowed domains or allowed source types.
-- Every selected discovery source must have selection rationale.
-- Every selected discovery source must have a matching `SourceRecord`.
-- Rejected discovery candidates must retain rejection reasons.
-- Discovery must not record recursive link following.
-- Prompt-injection text in search results must be treated as data and must not be accepted as an instruction.
+These validators own evidence existence, cross-artifact consistency, screenshot policy, claim support, price eligibility, discovery scope, and manual-review semantics.
 
-### price-compare
+### Evals
 
-- Every quote has product identity, specs, seller, platform, region, currency, timestamp, URL, and screenshot.
-- Price components remain separate.
-- Quote context and `quote_context_hash` must exist.
-- Estimated total must include calculation explanation.
-- Coupon actions are represented explicitly.
-- Low-confidence matches are excluded from final lowest-price conclusions.
-- Product-page screenshot policy must be present and required screenshot evidence must exist on disk.
-- Eligible lowest-price quotes must match comparison region, currency, and required specs.
-- Out-of-stock, unknown-total, incomplete-spec, cart-required, checkout-required, coupon-claim-required, address-change-required, and manual-review-required quotes must not enter final lowest-price conclusions.
-- Browser-captured price runs must keep `capture/source-###/page_capture.json`, `evidence/source-###/source_record.json`, `artifacts/prices.json`, CSV, report, manifest, and validation report consistent.
-- Anomalies are listed.
+Eval runners generate deterministic run directories under `evals/.tmp/` and validate expected behavior. `evals/.tmp/` remains ignored and temporary.
 
-### price-candidate-discovery
+The stable cross-skill shared-shape gate is:
 
-- Candidate discovery requires target product, required specs, allowed platforms, allowed domains, region, and currency.
-- `max_candidates_per_platform` must be positive and defaults to 3.
-- Total candidates must not exceed 20.
-- Candidate URL domains must remain inside approved domains.
-- Candidate platforms must remain inside approved platforms.
-- Public HTTP(S) product URLs are required.
-- Duplicate product URLs must be rejected or deduped before quote capture.
-- Recommendation links must be rejected.
-- Recursive link candidates must be rejected.
-- Every non-rejected candidate must have selection rationale.
-- Every candidate must have `match_confidence`, `mismatch_flags`, and a rationale field appropriate to its status.
-- Missing required specs, required spec mismatches, low match confidence, seller exclusions, and condition mismatches must force manual review.
-- Automatic quote extraction may include only high-confidence candidates with no manual-review flags when policy allows it.
-- Explicitly approved low-confidence or incomplete candidates may be passed to M9 quote capture, but M9 price validation must still exclude invalid quotes from lowest-price conclusions.
-- M9 `provided_url_candidate_assessment` remains the assessment method for product URLs after handoff. M10B `approved_candidate_discovery` is only for candidate records.
+```powershell
+python evals\run_cross_skill_schema_eval.py
+```
+
+## Status Semantics
+
+All generated manifests and validation reports must follow `docs/contracts/error-status-contract.md`.
+
+Required fields:
+
+- `run_status`
+- `validation_status`
+- `requires_manual_review`
+- `manual_review`
+- `completion_blockers`
+
+Rules:
+
+- `run_status=complete` is allowed only when schema, consistency, evidence, screenshot policy, and workflow checks pass.
+- `run_status=partial` is allowed only for useful artifacts that require warning-level manual review or fallback evidence.
+- `run_status=failed` is required for blocking schema, evidence, source support, main content, discovery scope, or price record failures.
+- `run_status=aborted_by_policy` is required when a Red action, unapproved Yellow action, privacy blocker, or scope violation blocks the task.
+- `requires_manual_review` must match `manual_review.required`.
 
 ## Non-Goals
 
 - Do not let Markdown prose become the only canonical record.
 - Do not use screenshots as the only machine-readable source.
 - Do not silently coerce missing fields into null without warning.
+- Do not use the minimal schema validator as a substitute for domain validation.
+- Do not add a full JSON Schema dependency in M11 unless explicitly approved.
+
+## Validation
+
+Release candidates must run:
+
+- The full compile gate in `docs/testing.md`.
+- All eval runners in `docs/testing.md`.
+- Generated-artifact schema checks after evals create `evals/.tmp/`.
+- Workflow validators for representative generated run directories.
+- Local plugin validation.
+- `git diff --check`.

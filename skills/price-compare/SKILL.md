@@ -29,9 +29,21 @@ Create a run directory outside the plugin package:
 - `artifacts/price-report.md`
 - `artifacts/anomalies.md`
 - `artifacts/price-chart.png`
-- `evidence/<platform>-<product>.png` for product screenshots when present
+- `capture/source-###/page_capture.json` for each browser-captured quote
 - `evidence/source-###/source_record.json` for each quote
+- `evidence/source-###/screenshots/` for required product-page screenshots
 - `validation/price-validation-report.json`
+
+For M10B approved candidate discovery, also create:
+
+- `artifacts/candidates.json`
+- `artifacts/candidates.csv`
+- `artifacts/candidate-review.md`
+- `capture/candidate-search/`
+- `validation/candidate-validation-report.json`
+- `validation/warnings.md`
+
+Candidate records do not replace M9 quote records, source records, product-page screenshots, or price validation reports. Missing product-page screenshots block complete included browser-captured quotes unless the quote is explicitly excluded and the run is partial.
 
 ## Procedure
 

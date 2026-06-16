@@ -1,3 +1,20 @@
+---
+doc_type: phase_plan
+phase_id: m9_price_product_url_capture_mvp
+title: price-compare product-URL browser quote capture MVP
+status: completed
+canonical: true
+related_contracts:
+  - docs/contracts/capture-adapter-contract.md
+  - docs/contracts/browser-operation-contract.md
+  - docs/contracts/evidence-contract.md
+  - docs/contracts/schemas-and-validation-contract.md
+  - docs/contracts/safety-contract.md
+related_adrs:
+  - docs/adr/0001-evidence-first-browser-workflows.md
+closeout: docs/planning/archive/m9-price-product-url-capture-mvp-closeout.md
+---
+
 # M9 Price Product URL Capture MVP
 
 Status: completed

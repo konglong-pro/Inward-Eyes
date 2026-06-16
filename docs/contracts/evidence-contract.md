@@ -35,7 +35,7 @@ The plugin package must not be used as the default runtime output location.
 
 ## Required Manifest Fields
 
-Future `manifest.json` must include:
+v1 `manifest.json` must include:
 
 - `run_id`
 - `task`
@@ -171,7 +171,7 @@ Network evidence may be enabled only by an explicit future debug policy with red
 
 ## SourceRecord Shape
 
-Future schemas should include this shared object:
+The v1 `SourceRecord` shape is the shared source evidence object:
 
 ```json
 {
@@ -197,6 +197,8 @@ Future schemas should include this shared object:
 ```
 
 `source_record.json` is the canonical evidence file name for this object. Do not create a competing source summary evidence object.
+
+See `docs/contracts/artifact-contracts.md` for the full public artifact contract.
 
 ## Validation
 

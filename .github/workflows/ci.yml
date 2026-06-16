@@ -31,6 +31,14 @@ jobs:
           scripts/research_capture_runner.py
           scripts/price_candidate_discovery_runner.py
           scripts/price_capture_runner.py
+          scripts/adapter_matrix_runner.py
+          scripts/site_profile_runner.py
+          scripts/privacy_report_runner.py
+          scripts/review_run.py
+          scripts/run_database.py
+          scripts/export_run.py
+          scripts/plugin_package.py
+          scripts/batch_runner.py
           scripts/markdown/render_page_md.py
           scripts/validation/validate_page_to_md.py
           scripts/validation/validate_page_capture.py
@@ -48,9 +56,16 @@ jobs:
           scripts/inward_eyes/safety.py
           scripts/inward_eyes/discovery.py
           scripts/inward_eyes/price_discovery.py
+          scripts/inward_eyes/adapter_matrix.py
           scripts/inward_eyes/validation.py
           scripts/inward_eyes/research.py
           scripts/inward_eyes/price.py
+          scripts/inward_eyes/site_profiles.py
+          scripts/inward_eyes/privacy.py
+          scripts/inward_eyes/review.py
+          scripts/inward_eyes/run_index.py
+          scripts/inward_eyes/exporters.py
+          scripts/inward_eyes/distribution.py
           scripts/browser_research_runner.py
           scripts/price_compare_runner.py
           evals/run_eval.py
@@ -63,6 +78,14 @@ jobs:
           evals/run_price_capture_eval.py
           evals/run_capture_adapter_eval.py
           evals/run_cross_skill_schema_eval.py
+          evals/run_adapter_matrix_eval.py
+          evals/run_real_world_eval.py
+          evals/run_privacy_eval.py
+          evals/run_site_profile_eval.py
+          evals/run_review_ui_eval.py
+          evals/run_distribution_eval.py
+          evals/run_batch_retry_eval.py
+          evals/run_export_eval.py
 
       - name: Run page-to-md evals
         run: python evals/run_eval.py
@@ -94,8 +117,33 @@ jobs:
       - name: Run cross-skill schema reuse evals
         run: python evals/run_cross_skill_schema_eval.py
 
+      - name: Run adapter matrix evals
+        run: python evals/run_adapter_matrix_eval.py
+
+      - name: Run real-world replay evals
+        run: python evals/run_real_world_eval.py
+
+      - name: Run privacy evals
+        run: python evals/run_privacy_eval.py
+
+      - name: Run site profile evals
+        run: python evals/run_site_profile_eval.py
+
+      - name: Run review UI evals
+        run: python evals/run_review_ui_eval.py
+
+      - name: Run distribution evals
+        run: python evals/run_distribution_eval.py
+
+      - name: Run batch and retry evals
+        run: python evals/run_batch_retry_eval.py
+
+      - name: Run export evals
+        run: python evals/run_export_eval.py
+
       - name: Validate generated schemas
         run: |
+          python scripts/validation/validate_json_schema.py --schema schemas/site_profiles.schema.json --json profiles/site_profiles.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_to_md_metadata.schema.json --json evals/.tmp/page-to-md/eval-public-article/artifacts/metadata.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_capture.schema.json --json evals/.tmp/capture-adapter/valid-capture/capture/page_capture.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_capture.schema.json --json evals/.tmp/capture-adapter/current-chrome-output/eval-current-chrome-logged-in/capture/page_capture.json

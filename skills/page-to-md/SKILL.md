@@ -1,11 +1,11 @@
 ---
 name: page-to-md
-description: Convert exactly one page/thread/URL/local HTML/page capture into evidence-backed Markdown with metadata, source record, AST, validation, and optional screenshot. Excludes research, price comparison, purchasing, account changes, posting, messaging, coupons, cart, and checkout.
+description: Convert exactly one page, or one already captured/local thread-like page, into evidence-backed Markdown with metadata, source record, AST, validation, and optional screenshot. Excludes live full-thread capture, research, price comparison, purchasing, account changes, posting, messaging, coupons, cart, and checkout.
 ---
 
 # page-to-md
 
-You convert one page or one thread into evidence-backed Markdown.
+You convert one page, or one already captured/local thread-like page, into evidence-backed Markdown.
 
 ## Inputs
 
@@ -14,14 +14,16 @@ Preferred implemented inputs:
 - Local HTML file.
 - Page capture JSON created by Inward Eyes capture scripts.
 
-Browser-backed inputs, only when an approved adapter is available:
+Browser-backed inputs, limited to frozen M6/M7 boundaries:
 
-- Current browser page.
-- URL that Codex can open with an approved browser tool.
+- One public URL captured through the M6 public URL adapter boundary.
+- One explicitly user-approved currently visible Chrome page captured through the M7 current Chrome boundary.
 
 Fallback input:
 
 - Screenshot plus URL only as fallback; mark the run partial.
+
+Live full-thread capture, infinite-scroll capture, and new browser backends remain out of scope for this skill unless a future phase implements them.
 
 ## Required Outputs
 
@@ -136,7 +138,7 @@ python scripts/capture/current_chrome_page_to_md_runner.py --url <visible-url> -
 
 The current Chrome adapter is one visible page only. It must not scan tabs, explore account menus, crawl private dashboards, export browser profiles, save cookies, save tokens, save HAR, save local storage, save session storage, save passwords, or save payment details.
 
-When an approved browser tool has already produced observations, write those observations to capture JSON explicitly:
+When an approved M6/M7 capture path has already produced observations, write those observations to capture JSON explicitly:
 
 ```bash
 python scripts/capture/playwright_mcp_capture.py --url <public-url> --page-title "<observed-title>" --selected-main-content-file <text-file> --output-root <output-root> --run-id <run-id>

@@ -2,8 +2,9 @@
 doc_type: phase_plan
 phase_id: m3_m5_research_price_pluginization
 title: browser-research, price-compare, and pluginization
-status: mvp_completed
+status: superseded
 canonical: true
+superseded_by: docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md
 related_contracts:
   - docs/contracts/evidence-contract.md
   - docs/contracts/browser-operation-contract.md

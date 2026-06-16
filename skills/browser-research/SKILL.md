@@ -12,7 +12,7 @@ You produce multi-source research reports with evidence-backed claims.
 Accept one of:
 
 - A scoped research question plus user-approved source URLs.
-- Current browser pages or captures that are already in task scope.
+- One already approved current-browser page capture under M7 current-page rules, when it is already in task scope.
 - Local browser-research input JSON prepared from captured sources.
 
 Do not begin with broad crawling. Search public pages only when the user explicitly asks for discovery and the scope is small.
@@ -47,6 +47,14 @@ Create a run directory outside the plugin package:
 - `validation/claim-coverage-report.json`
 - `validation/missing-sources.md`
 - Screenshot evidence when required by policy.
+
+For `small_scope_discovery`, also create:
+
+- `artifacts/discovery-log.json`
+- `artifacts/discovery-log.md`
+- `capture/source-###/page_capture.json` for selected captured sources
+- `evidence/source-###/source_record.json` for selected sources
+- `validation/discovery-validation-report.json`
 
 ## Procedure
 

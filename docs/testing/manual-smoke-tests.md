@@ -2,6 +2,55 @@
 
 Real webpage content, screenshots, cookies, HAR files, and browser profiles must not be committed. Keep runtime outputs under ignored local directories such as `evals/.tmp/`.
 
+## Smoke Test: current Chrome logged-in page
+
+Use this only for local manual verification. Do not commit real logged-in page content, screenshots, copied visible text, cookies, tokens, HAR files, local storage, session storage, browser profiles, passwords, payment details, order data, inbox data, or private dashboard content.
+
+Suggested safe procedure:
+
+1. Open the target page in Chrome yourself and confirm the visible page is the only approved scope.
+2. Capture only visible URL, visible page title, and a redacted/approved visible text excerpt or structured snapshot.
+3. Save a screenshot only after privacy review/redaction policy is applied.
+4. Run `python scripts\capture\current_chrome_page_to_md_runner.py --url <visible-url> --user-approved-current-page --page-title "<visible-title>" --selected-main-content-file <redacted-text-file> --screenshot <reviewed-screenshot> --screenshot-privacy-reviewed --login-state confirmed --requires-login --output-root <ignored-output-root> --run-id <run-id>`.
+5. Validate with `python scripts\validation\validate_page_capture.py <run_dir>\capture\page_capture.json` and `python scripts\validation\validate_page_to_md.py <run_dir>`.
+6. Record only high-level notes here: date, adapter command shape, run directory path under an ignored location, validation result, and warnings. Do not include content or screenshots.
+
+## Smoke Test: browser-research provided URLs
+
+Use this only for local manual verification. Do not commit copied webpage content, screenshots with private data, cookies, tokens, HAR files, browser profiles, passwords, payment details, or unrelated private data.
+
+Suggested safe scenarios:
+
+- 3-source public research run.
+- 5-source public research run.
+- One source unavailable.
+- One source with conflicting metadata.
+
+Suggested procedure:
+
+1. Prepare a small JSON spec with the research question, approved source URLs, source titles or reviewed source text snippets, source independence notes, and a claim ledger.
+2. Run `python scripts\research_capture_runner.py --input <spec.json> --output-root <ignored-output-root> --run-id <run-id>`.
+3. Validate with `python scripts\validation\validate_browser_research.py <run_dir>`.
+4. Record only high-level notes here: date, source count, command shape, ignored run directory, validation result, warnings, and whether any source failed. Do not include source content.
+
+## Smoke Test: price-compare product URLs
+
+Use this only for local manual verification. Do not commit real ecommerce screenshots containing personal account data, copied account-visible content, cookies, tokens, HAR files, browser profiles, passwords, payment details, addresses, order data, cart data, or checkout data.
+
+Suggested safe scenarios:
+
+- Public/simple product page.
+- Product page with visible coupon price.
+- Product page with unknown shipping.
+- Product page with variant/spec ambiguity.
+
+Suggested procedure:
+
+1. Prepare a small JSON spec with the target product, required specs, approved product URLs, reviewed product-page text snippets, visible quote fields, and reviewed/redacted screenshot paths.
+2. Run `python scripts\price_capture_runner.py --input <spec.json> --output-root <ignored-output-root> --run-id <run-id>`.
+3. Validate with `python scripts\validation\validate_price_compare.py <run_dir>`.
+4. Record only high-level notes here: date, product URL count, command shape, ignored run directory, validation result, warnings, and whether any quote was excluded. Do not include page content or screenshots.
+
 ## Smoke Test: public article
 
 - Date: 2026-06-10

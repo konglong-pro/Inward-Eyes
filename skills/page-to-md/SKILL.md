@@ -128,6 +128,14 @@ For the optional M6 Playwright MCP adapter boundary, use the wrapper when you wa
 python scripts/capture/page_to_md_browser_runner.py --url <public-url> --output-root <output-root> --run-id <run-id>
 ```
 
+For the optional M7 current Chrome boundary, use the wrapper only after the user has explicitly approved the currently visible page and any screenshot has already passed privacy review/redaction:
+
+```bash
+python scripts/capture/current_chrome_page_to_md_runner.py --url <visible-url> --user-approved-current-page --page-title "<visible-title>" --selected-main-content-file <redacted-text-file> --screenshot <reviewed-screenshot> --screenshot-privacy-reviewed --login-state confirmed --requires-login --output-root <output-root> --run-id <run-id>
+```
+
+The current Chrome adapter is one visible page only. It must not scan tabs, explore account menus, crawl private dashboards, export browser profiles, save cookies, save tokens, save HAR, save local storage, save session storage, save passwords, or save payment details.
+
 When an approved browser tool has already produced observations, write those observations to capture JSON explicitly:
 
 ```bash

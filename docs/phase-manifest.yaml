@@ -1,9 +1,9 @@
 current:
   inward_eyes:
-    phase_id: m6_browser_capture_adapter_mvp
-    title: "v0.3 adapter-boundary MVP closed; next phase not active"
+    phase_id: m9_price_product_url_capture_mvp
+    title: "v0.6 price-compare product-URL browser quote capture MVP completed"
     status: completed
-    canonical_spec: docs/planning/archive/m6-browser-capture-adapter-mvp-closeout.md
+    canonical_spec: docs/planning/active/m9-price-product-url-capture-mvp.md
     agent_rules: docs/agents/current/browser-operator-agent-rules.md
     release_gate: docs/active/current.md#current-gates
     allowed_areas:
@@ -12,10 +12,14 @@ current:
       - CONTEXT.md
       - docs/**
       - skills/page-to-md/**
+      - skills/browser-research/**
+      - skills/price-compare/**
       - scripts/capture/**
       - scripts/validation/**
       - scripts/inward_eyes/**
       - scripts/page_to_md_runner.py
+      - scripts/research_capture_runner.py
+      - scripts/price_capture_runner.py
       - schemas/page_capture.schema.json
       - evals/**
     forbidden_areas:
@@ -68,4 +72,34 @@ phases:
       - evals/run_cross_skill_schema_eval.py
     supersedes:
       - m4_m5_price_pluginization_mvp
+    superseded_by: m7_current_chrome_capture_mvp
+  m7_current_chrome_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/active/m7-current-chrome-capture-mvp.md
+    closeout: docs/planning/archive/m7-current-chrome-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_capture_adapter_eval.py
+    supersedes:
+      - m6_browser_capture_adapter_mvp
+    superseded_by: m8_research_provided_url_capture_mvp
+  m8_research_provided_url_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/active/m8-research-provided-url-capture-mvp.md
+    closeout: docs/planning/archive/m8-research-provided-url-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_research_capture_eval.py
+    supersedes:
+      - m7_current_chrome_capture_mvp
+    superseded_by: m9_price_product_url_capture_mvp
+  m9_price_product_url_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/active/m9-price-product-url-capture-mvp.md
+    closeout: docs/planning/archive/m9-price-product-url-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_price_capture_eval.py
+    supersedes:
+      - m8_research_provided_url_capture_mvp
     superseded_by: null

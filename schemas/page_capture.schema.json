@@ -8,6 +8,10 @@
     "capture_id",
     "captured_at",
     "capture_method",
+    "login_state",
+    "contains_private_data",
+    "redaction_applied",
+    "redaction_notes",
     "source",
     "browser_context",
     "content",
@@ -31,6 +35,27 @@
     "capture_method": {
       "type": "string",
       "minLength": 1
+    },
+    "login_state": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "suspected",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "contains_private_data": {
+      "type": "boolean"
+    },
+    "redaction_applied": {
+      "type": "boolean"
+    },
+    "redaction_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "source": {
       "type": "object",
@@ -79,7 +104,7 @@
         "login_state": {
           "type": "string",
           "enum": [
-            "known",
+            "confirmed",
             "suspected",
             "not_required",
             "unknown"
@@ -181,6 +206,7 @@
       "required": [
         "redaction_applied",
         "private_data_detected",
+        "contains_private_data",
         "redaction_notes"
       ],
       "properties": {
@@ -190,11 +216,17 @@
         "private_data_detected": {
           "type": "boolean"
         },
+        "contains_private_data": {
+          "type": "boolean"
+        },
         "redaction_notes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "screenshot_privacy_reviewed": {
+          "type": "boolean"
         }
       }
     },

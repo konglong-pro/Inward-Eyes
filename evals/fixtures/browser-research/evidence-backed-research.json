@@ -102,8 +102,9 @@
           "excerpt": "Sources table and claim ledger agree."
         }
       ],
-      "single_source": false,
-      "confidence": "high"
+      "single_source": true,
+      "confidence": "high",
+      "notes": "The second source is the same project authority, so this is not independent confirmation."
     },
     {
       "claim_id": "C003",

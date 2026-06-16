@@ -8,13 +8,38 @@ from urllib.parse import urlparse
 
 from inward_eyes.io import utc_now, write_json, write_text
 
-LOGIN_STATES = {"known", "suspected", "not_required", "unknown"}
+LOGIN_STATES = {"confirmed", "suspected", "not_required", "unknown"}
 SCREENSHOT_STATUSES = {
     "required_and_present",
     "required_but_missing",
     "not_required",
     "capture_failed",
     "redacted",
+}
+SCREENSHOT_REQUIRED_PAGE_TYPES = {"x_thread", "forum_thread", "product_page"}
+SCREENSHOT_REQUIRED_WARNINGS = {
+    "dynamic_page",
+    "ambiguous_extraction",
+    "personal_context",
+    "private_data_warning",
+    "thread_page",
+    "forum_thread",
+    "ecommerce_page",
+}
+FORBIDDEN_CAPTURE_KEYS = {
+    "cookies",
+    "cookie",
+    "tokens",
+    "token",
+    "har",
+    "network_log",
+    "local_storage",
+    "session_storage",
+    "browser_profile",
+    "browser_profiles",
+    "password",
+    "passwords",
+    "payment_details",
 }
 PROMPT_INJECTION_PATTERNS = (
     "ignore previous instructions",
@@ -122,6 +147,10 @@ def redact_private_text(value: Any) -> tuple[Any, list[str]]:
     return value, notes
 
 
+def _normalize_login_state(login_state: str) -> str:
+    return "confirmed" if login_state == "known" else login_state
+
+
 def has_raw_private_text(content: dict[str, Any]) -> bool:
     haystack = "\n".join(_iter_content_strings(content))
     return any(pattern.search(haystack) for _, pattern in PRIVATE_PATTERNS)
@@ -156,12 +185,19 @@ def build_page_capture(
     browser_tool: str = "playwright_mcp",
     login_state: str = "not_required",
     requires_login: bool = False,
+    source_page_type: str | None = None,
     user_visible_profile: bool = False,
+    current_page_approved: bool = False,
+    capture_scope: str | None = None,
     region_or_locale: str | None = None,
     viewport: dict[str, Any] | None = None,
     screenshot_paths: list[str] | None = None,
     screenshot_required: bool = False,
     screenshot_reason: str = "static_public_article",
+    screenshot_privacy_reviewed: bool = False,
+    contains_private_data: bool = False,
+    redaction_applied: bool = False,
+    redaction_notes: list[str] | None = None,
     warnings: list[str] | None = None,
 ) -> dict[str, Any]:
     captured_at = captured_at or utc_now()
@@ -173,42 +209,63 @@ def build_page_capture(
         "accessibility_snapshot": accessibility_snapshot,
         "selected_main_content": selected_main_content,
     }
-    redacted_content, redaction_notes = redact_private_text(content)
-    redaction_notes = list(dict.fromkeys(redaction_notes))
+    login_state = _normalize_login_state(login_state)
+    redacted_content, detected_redaction_notes = redact_private_text(content)
+    redaction_notes = list(dict.fromkeys(detected_redaction_notes + (redaction_notes or [])))
     warnings = list(dict.fromkeys(warnings or []))
-    if redaction_notes and "private_data_redacted" not in warnings:
+    detected_private_data = bool(contains_private_data or redaction_notes)
+    effective_redaction_applied = bool(redaction_applied or detected_redaction_notes)
+    if detected_redaction_notes and "private_data_redacted" not in warnings:
         warnings.append("private_data_redacted")
+    elif detected_private_data and "private_data_warning" not in warnings:
+        warnings.append("private_data_warning")
     if detect_prompt_injection_text(redacted_content) and "prompt_injection_text_present" not in warnings:
         warnings.append("prompt_injection_text_present")
+
+    source = {
+        "url": url,
+        "canonical_url": canonical_url,
+        "page_title": page_title,
+        "site_name": site_name,
+        "requires_login": requires_login,
+    }
+    if source_page_type:
+        source["page_type"] = source_page_type
+
+    browser_context = {
+        "tool": browser_tool,
+        "login_state": login_state,
+        "user_visible_profile": user_visible_profile,
+        "region_or_locale": region_or_locale,
+        "viewport": viewport,
+    }
+    if current_page_approved:
+        browser_context["user_approved_current_page"] = True
+    if capture_scope:
+        browser_context["scope"] = capture_scope
 
     return {
         "schema_version": "1.0",
         "capture_id": capture_id,
         "captured_at": captured_at,
         "capture_method": capture_method,
-        "source": {
-            "url": url,
-            "canonical_url": canonical_url,
-            "page_title": page_title,
-            "site_name": site_name,
-            "requires_login": requires_login,
-        },
-        "browser_context": {
-            "tool": browser_tool,
-            "login_state": login_state,
-            "user_visible_profile": user_visible_profile,
-            "region_or_locale": region_or_locale,
-            "viewport": viewport,
-        },
+        "login_state": login_state,
+        "contains_private_data": detected_private_data,
+        "redaction_applied": effective_redaction_applied,
+        "redaction_notes": redaction_notes,
+        "source": source,
+        "browser_context": browser_context,
         "content": redacted_content,
         "assets": {
             "screenshots": [{"path": path} for path in screenshot_paths],
             "images": [],
         },
         "privacy": {
-            "redaction_applied": bool(redaction_notes),
-            "private_data_detected": bool(redaction_notes),
+            "redaction_applied": effective_redaction_applied,
+            "private_data_detected": detected_private_data,
+            "contains_private_data": detected_private_data,
             "redaction_notes": redaction_notes,
+            "screenshot_privacy_reviewed": screenshot_privacy_reviewed,
         },
         "screenshot_policy": default_screenshot_policy(
             required=screenshot_required,
@@ -217,6 +274,45 @@ def build_page_capture(
         ),
         "warnings": warnings,
     }
+
+
+def _capture_is_current_browser(capture: dict[str, Any]) -> bool:
+    browser_context = capture.get("browser_context") if isinstance(capture.get("browser_context"), dict) else {}
+    capture_method = str(capture.get("capture_method") or "")
+    return browser_context.get("tool") == "current_chrome" or capture_method.startswith("current_chrome")
+
+
+def _iter_dict_keys(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        keys = list(value.keys())
+        for nested in value.values():
+            keys.extend(_iter_dict_keys(nested))
+        return keys
+    if isinstance(value, list):
+        keys: list[str] = []
+        for nested in value:
+            keys.extend(_iter_dict_keys(nested))
+        return keys
+    return []
+
+
+def _screenshot_required_reasons(capture: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    source = capture.get("source") if isinstance(capture.get("source"), dict) else {}
+    browser_context = capture.get("browser_context") if isinstance(capture.get("browser_context"), dict) else {}
+    privacy = capture.get("privacy") if isinstance(capture.get("privacy"), dict) else {}
+    warnings = set(capture.get("warnings") or [])
+    page_type = source.get("page_type")
+
+    if source.get("requires_login") or browser_context.get("login_state") in {"confirmed", "suspected"}:
+        reasons.append("logged_in_page")
+    if bool(capture.get("contains_private_data") or privacy.get("contains_private_data") or privacy.get("private_data_detected")):
+        reasons.append("private_data")
+    if page_type in SCREENSHOT_REQUIRED_PAGE_TYPES:
+        reasons.append(str(page_type))
+    for warning in sorted(warnings.intersection(SCREENSHOT_REQUIRED_WARNINGS)):
+        reasons.append(warning)
+    return list(dict.fromkeys(reasons))
 
 
 def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
@@ -246,6 +342,7 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
     assets = capture.get("assets") if isinstance(capture.get("assets"), dict) else {}
     privacy = capture.get("privacy") if isinstance(capture.get("privacy"), dict) else {}
     screenshot_policy = capture.get("screenshot_policy") if isinstance(capture.get("screenshot_policy"), dict) else {}
+    is_current_browser = _capture_is_current_browser(capture)
 
     url = source.get("url")
     if not isinstance(url, str) or not url.strip():
@@ -254,7 +351,7 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             errors.append("source.url_not_http")
-        else:
+        elif not is_current_browser:
             hostname = parsed.hostname or ""
             if hostname.lower() in {"localhost", "127.0.0.1", "::1"} or hostname.lower().endswith(".local"):
                 errors.append("source.url_not_public")
@@ -269,20 +366,31 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
         errors.append("source.page_title_missing")
     if not isinstance(source.get("requires_login"), bool):
         errors.append("source.requires_login_missing")
-    elif source.get("requires_login"):
+    elif source.get("requires_login") and not is_current_browser:
         errors.append("source.requires_login_out_of_scope")
 
     if not isinstance(browser_context.get("tool"), str) or not browser_context.get("tool", "").strip():
         errors.append("browser_context.tool_missing")
-    if browser_context.get("tool") != "playwright_mcp":
+    if browser_context.get("tool") not in {"playwright_mcp", "current_chrome"}:
         warnings.append(f"browser_context.unexpected_tool:{browser_context.get('tool')}")
-    login_state = browser_context.get("login_state")
+    login_state = _normalize_login_state(str(browser_context.get("login_state")))
     if login_state not in LOGIN_STATES:
-        errors.append(f"browser_context.login_state_invalid:{login_state}")
-    elif login_state != "not_required":
+        errors.append(f"browser_context.login_state_invalid:{browser_context.get('login_state')}")
+    elif login_state != "not_required" and not is_current_browser:
         errors.append(f"browser_context.login_state_out_of_scope:{login_state}")
-    if browser_context.get("user_visible_profile"):
+    if capture.get("login_state") is not None and _normalize_login_state(str(capture.get("login_state"))) != login_state:
+        errors.append("login_state_alias_mismatch")
+    if browser_context.get("user_visible_profile") and not is_current_browser:
         errors.append("browser_context.user_visible_profile_forbidden")
+    if is_current_browser:
+        if browser_context.get("user_approved_current_page") is not True:
+            errors.append("current_browser.user_approved_current_page_missing")
+        if browser_context.get("scope") != "current_visible_page":
+            errors.append("current_browser.scope_not_current_visible_page")
+        if browser_context.get("related_tabs_scanned"):
+            errors.append("current_browser.related_tabs_scanned_forbidden")
+        if browser_context.get("account_menu_explored"):
+            errors.append("current_browser.account_menu_exploration_forbidden")
 
     if not content_payload_present(content):
         errors.append("content.payload_missing")
@@ -302,6 +410,9 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(screenshot_policy.get("reason"), str):
         errors.append("screenshot_policy.reason_missing")
     status = screenshot_policy.get("status")
+    required_reasons = _screenshot_required_reasons(capture)
+    if required_reasons and screenshot_policy.get("required") is not True:
+        errors.append(f"screenshot_policy.required_missing_for:{'+'.join(required_reasons)}")
     if status not in SCREENSHOT_STATUSES:
         errors.append(f"screenshot_policy.status_invalid:{status}")
     elif screenshot_policy.get("required"):
@@ -312,21 +423,37 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
         elif status in {"capture_failed", "redacted"}:
             manual_review = True
             warnings.append(f"screenshot_{status}")
+            if not screenshots:
+                errors.append("screenshot_required_evidence_missing")
+    if is_current_browser and screenshots and privacy.get("screenshot_privacy_reviewed") is not True:
+        errors.append("screenshot_privacy_review_missing")
 
     if not isinstance(privacy.get("redaction_applied"), bool):
         errors.append("privacy.redaction_applied_missing")
     if not isinstance(privacy.get("private_data_detected"), bool):
         errors.append("privacy.private_data_detected_missing")
+    if not isinstance(privacy.get("contains_private_data"), bool):
+        errors.append("privacy.contains_private_data_missing")
     if not isinstance(privacy.get("redaction_notes"), list):
         errors.append("privacy.redaction_notes_missing")
-    if privacy.get("private_data_detected"):
+    if capture.get("contains_private_data") is not None and bool(capture.get("contains_private_data")) != bool(privacy.get("contains_private_data")):
+        errors.append("privacy.contains_private_data_alias_mismatch")
+    if capture.get("redaction_applied") is not None and bool(capture.get("redaction_applied")) != bool(privacy.get("redaction_applied")):
+        errors.append("privacy.redaction_applied_alias_mismatch")
+    if capture.get("redaction_notes") is not None and capture.get("redaction_notes") != privacy.get("redaction_notes"):
+        errors.append("privacy.redaction_notes_alias_mismatch")
+    if privacy.get("private_data_detected") or privacy.get("contains_private_data"):
         manual_review = True
-        if not privacy.get("redaction_applied"):
-            errors.append("privacy.private_data_detected_without_redaction")
-        if "private_data_redacted" not in warnings:
+        if privacy.get("redaction_applied") and "private_data_redacted" not in warnings:
             warnings.append("private_data_redacted")
+        elif "private_data_warning" not in warnings:
+            warnings.append("private_data_warning")
     elif has_raw_private_text(content):
         errors.append("privacy.raw_private_data_detected")
+
+    for key in _iter_dict_keys(capture):
+        if key.lower() in FORBIDDEN_CAPTURE_KEYS:
+            errors.append(f"forbidden_capture_key:{key}")
 
     warnings = list(dict.fromkeys(warnings))
     status_value = "fail" if errors else "pass"

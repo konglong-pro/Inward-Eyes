@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -18,6 +19,16 @@ from inward_eyes.markdown import render_page_markdown
 from inward_eyes.validation import validate_page_to_md_run
 
 SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+SCREENSHOT_REQUIRED_PAGE_TYPES = {"x_thread", "forum_thread", "product_page"}
+SCREENSHOT_REQUIRED_WARNINGS = {
+    "dynamic_page",
+    "ambiguous_extraction",
+    "personal_context",
+    "private_data_warning",
+    "thread_page",
+    "forum_thread",
+    "ecommerce_page",
+}
 
 
 def _slug_timestamp(timestamp: str) -> str:
@@ -75,22 +86,58 @@ def is_page_capture(data: Any) -> bool:
     )
 
 
+def _capture_contains_private_data(capture: dict[str, Any]) -> bool:
+    privacy = capture.get("privacy") if isinstance(capture.get("privacy"), dict) else {}
+    return bool(
+        capture.get("contains_private_data")
+        or privacy.get("contains_private_data")
+        or privacy.get("private_data_detected")
+    )
+
+
+def _screenshot_required_reasons(capture: dict[str, Any], page_type: str, requires_login: bool) -> list[str]:
+    source = capture.get("source") if isinstance(capture.get("source"), dict) else {}
+    browser_context = capture.get("browser_context") if isinstance(capture.get("browser_context"), dict) else {}
+    warnings = set(capture.get("warnings") or [])
+    reasons: list[str] = []
+    if requires_login or source.get("requires_login") or browser_context.get("login_state") in {"confirmed", "suspected"}:
+        reasons.append("logged_in_page")
+    if _capture_contains_private_data(capture):
+        reasons.append("private_data")
+    if page_type in SCREENSHOT_REQUIRED_PAGE_TYPES:
+        reasons.append(page_type)
+    for warning in sorted(warnings.intersection(SCREENSHOT_REQUIRED_WARNINGS)):
+        reasons.append(warning)
+    return list(dict.fromkeys(reasons))
+
+
 def screenshot_policy_for(
     capture: dict[str, Any],
     page_type: str,
     requires_login: bool,
 ) -> dict[str, Any]:
+    assets = capture.get("assets") if isinstance(capture.get("assets"), dict) else {}
+    raw_screenshots = assets.get("screenshots") if isinstance(assets.get("screenshots"), list) else []
+    required_reasons = _screenshot_required_reasons(capture, page_type, requires_login)
     existing = capture.get("screenshot_policy")
     if isinstance(existing, dict):
+        required = bool(existing.get("required")) or bool(required_reasons)
+        status = str(existing.get("status") or ("required_but_missing" if required else "not_required"))
+        reason = str(existing.get("reason") or "capture_policy")
+        if required_reasons and not existing.get("required"):
+            reason = "+".join(required_reasons)
+            status = "required_and_present" if raw_screenshots else "required_but_missing"
         return {
-            "required": bool(existing.get("required")),
-            "reason": str(existing.get("reason") or "capture_policy"),
-            "status": str(existing.get("status") or ("required_but_missing" if existing.get("required") else "not_required")),
+            "required": required,
+            "reason": reason,
+            "status": status,
         }
-    if requires_login:
-        return {"required": True, "reason": "requires_login", "status": "required_but_missing"}
-    if page_type in {"x_thread", "forum_thread", "product_page"}:
-        return {"required": True, "reason": page_type, "status": "required_but_missing"}
+    if required_reasons:
+        return {
+            "required": True,
+            "reason": "+".join(required_reasons),
+            "status": "required_and_present" if raw_screenshots else "required_but_missing",
+        }
     return {"required": False, "reason": "static_public_article", "status": "not_required"}
 
 
@@ -121,6 +168,14 @@ def _resolve_capture_asset(raw_path: str, input_path: Path) -> Path | None:
         if candidate.exists():
             return candidate
     return None
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 def stage_capture_screenshots(
@@ -162,6 +217,7 @@ def stage_capture_screenshots(
                 "path": relative_to(destination, run_dir),
                 "captured_at": captured_at,
                 "source_path": raw_path,
+                "sha256": _sha256_file(destination),
             }
         )
     return staged
@@ -252,6 +308,12 @@ def normalize_capture(
     screenshot_policy = screenshot_policy_for(capture, page_type, effective_requires_login)
     if screenshot_policy["status"] == "required_but_missing" and "screenshot_required_but_missing" not in warnings:
         warnings.append("screenshot_required_but_missing")
+    capture_privacy = capture.get("privacy") if isinstance(capture.get("privacy"), dict) else {}
+    contains_private_data = _capture_contains_private_data(capture)
+    redaction_notes = capture.get("redaction_notes") or capture_privacy.get("redaction_notes") or []
+    redaction_applied = bool(capture.get("redaction_applied") or capture_privacy.get("redaction_applied"))
+    if contains_private_data and "private_data_warning" not in warnings and "private_data_redacted" not in warnings:
+        warnings.append("private_data_warning")
 
     metadata = {
         "schema_version": "1.0",
@@ -263,6 +325,9 @@ def normalize_capture(
             "site_name": source.get("site_name"),
             "accessed_at": accessed_at,
             "requires_login": effective_requires_login,
+            "login_state": (capture.get("login_state") or capture.get("browser_context", {}).get("login_state"))
+            if isinstance(capture.get("browser_context"), dict)
+            else capture.get("login_state"),
         },
         "document": {
             "title": title_field,
@@ -279,6 +344,11 @@ def normalize_capture(
             "screenshot_policy": screenshot_policy,
         },
         "assets": [],
+        "privacy": {
+            "contains_private_data": contains_private_data,
+            "redaction_applied": redaction_applied,
+            "redaction_notes": redaction_notes if isinstance(redaction_notes, list) else [],
+        },
     }
     normalized_ast = {
         "schema_version": ast.get("schema_version") or "1.0",
@@ -366,6 +436,7 @@ def create_manifest(
                 "type": asset.get("type", "screenshot"),
                 "path": asset["path"],
                 "captured_at": asset.get("captured_at"),
+                **({"sha256": asset["sha256"]} if asset.get("sha256") else {}),
             }
         )
     if validation_report is not None:
@@ -454,7 +525,8 @@ def run(args: argparse.Namespace) -> Path:
 
     ast_for_classification = capture.get("document_ast", {})
     page_type = classify_page_type(source_url, ast_for_classification, args.page_type)
-    metadata, ast, warnings = normalize_capture(capture, source_url, page_type, args.requires_login, started_at)
+    accessed_at = capture.get("captured_at") if capture_input and isinstance(capture.get("captured_at"), str) else started_at
+    metadata, ast, warnings = normalize_capture(capture, source_url, page_type, args.requires_login, accessed_at)
     staged_screenshots = stage_capture_screenshots(capture_input, input_path, run_dir, started_at, warnings)
     metadata["assets"] = staged_screenshots
     metadata["extraction"]["warnings"] = list(dict.fromkeys(warnings))

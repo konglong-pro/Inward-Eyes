@@ -96,4 +96,18 @@ When working from a local research input JSON, use:
 python scripts/browser_research_runner.py --input <path> --output-root <output-root>
 ```
 
+For M8 provided-URL browser capture, use the orchestration runner. It captures only approved source URLs, writes per-source capture evidence, generates local research input JSON, and then runs the existing local research runner:
+
+```bash
+python scripts/research_capture_runner.py --question "<research-question>" --url <approved-source-url-1> --url <approved-source-url-2> --output-root <output-root> --run-id <run-id>
+```
+
+For deterministic runs with an explicit claim ledger, use an M8 JSON spec:
+
+```bash
+python scripts/research_capture_runner.py --input <m8-research-capture-spec.json> --output-root <output-root> --run-id <run-id>
+```
+
+Do not use M8 as search or discovery. It only captures sources the user already provided or already approved in current-browser scope.
+
 Use the project root as the working directory.

@@ -3,6 +3,10 @@
   "capture_id": "cap_001",
   "captured_at": "2026-06-09T12:00:00Z",
   "capture_method": "manual_page_capture_json",
+  "login_state": "not_required",
+  "contains_private_data": false,
+  "redaction_applied": false,
+  "redaction_notes": [],
   "source": {
     "url": "https://example.test/captures/structured-source",
     "canonical_url": "https://example.test/captures/structured-source",
@@ -80,6 +84,7 @@
   "privacy": {
     "redaction_applied": false,
     "private_data_detected": false,
+    "contains_private_data": false,
     "redaction_notes": []
   },
   "screenshot_policy": {

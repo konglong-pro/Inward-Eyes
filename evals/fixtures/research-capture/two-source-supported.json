@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "topic": "M8 provided URL capture",
+  "question": "Can provided browser sources feed browser-research?",
+  "summary": "Provided URLs can be captured into source evidence and transformed into the existing research input format.",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://source-a.example.test/research/m8",
+      "approved": true,
+      "page_title": "M8 Capture Source A",
+      "site_name": "Example Source A",
+      "source_type": "primary",
+      "page_type": "docs",
+      "selected_main_content": "M8 Capture Source A\n\nProvided URLs are captured into page_capture artifacts before the research runner renders claims.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "primary project statement"
+      }
+    },
+    {
+      "source_id": "S002",
+      "url": "https://source-b.example.test/research/m8",
+      "approved": true,
+      "page_title": "M8 Capture Source B",
+      "site_name": "Example Source B",
+      "source_type": "analysis",
+      "page_type": "article",
+      "selected_main_content": "M8 Capture Source B\n\nThe existing browser-research runner remains responsible for claim ledgers, reports, and validation.",
+      "independence": {
+        "status": "independent",
+        "related_to": null,
+        "reason": "synthetic independent confirmation"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "M8 captures provided URLs before using the existing browser-research runner.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Provided URLs are captured into page_capture artifacts"
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "browser-research runner remains responsible for claim ledgers"
+        }
+      ],
+      "single_source": false,
+      "confidence": "high"
+    }
+  ]
+}

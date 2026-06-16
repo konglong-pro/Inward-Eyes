@@ -3,6 +3,10 @@
   "capture_id": "cap_partial_001",
   "captured_at": "2026-06-09T12:25:00Z",
   "capture_method": "screenshot_visible_text_fallback",
+  "login_state": "unknown",
+  "contains_private_data": false,
+  "redaction_applied": false,
+  "redaction_notes": [],
   "source": {
     "url": "https://example.test/partial/screenshot-only",
     "canonical_url": null,
@@ -22,21 +26,26 @@
     "selected_main_content": "Partial Screenshot Fallback\n\nOnly visible text was available from the page screenshot, so this run must be treated as partial and manually reviewed."
   },
   "assets": {
-    "screenshots": [],
+    "screenshots": [
+      {
+        "path": "screenshots/synthetic-evidence.png",
+        "captured_at": "2026-06-09T12:25:00Z"
+      }
+    ],
     "images": []
   },
   "privacy": {
     "redaction_applied": false,
     "private_data_detected": false,
+    "contains_private_data": false,
     "redaction_notes": []
   },
   "screenshot_policy": {
     "required": true,
     "reason": "screenshot_fallback",
-    "status": "capture_failed"
+    "status": "required_and_present"
   },
   "warnings": [
-    "partial_screenshot_fallback",
-    "screenshot_capture_failed"
+    "partial_screenshot_fallback"
   ]
 }

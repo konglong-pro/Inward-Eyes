@@ -78,6 +78,26 @@ For each source:
 - Excluded content scope.
 - Warnings.
 
+For M8 browser-research capture, each provided source URL must have a stable source directory:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+The `source_id` must agree with the `source-###` directory name. Source capture failures must remain auditable through run warnings and partial/failed run status.
+
+For M9 product-URL price capture, each provided product URL must use the same stable source directory shape:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+Product-page screenshots are required. Missing screenshot evidence fails validation for included product-page quotes unless the quote is explicitly excluded and the run is partial.
+
 Screenshot policy must be explicit. Allowed statuses:
 
 - `required_and_present`
@@ -95,6 +115,8 @@ Screenshot evidence is required for:
 - Infinite-scroll or dynamic pages.
 - Ambiguous extraction.
 - Any output likely to be manually challenged.
+
+Screenshot evidence staged into `evidence/screenshots/` must be recorded in `manifest.json` with a `sha256:<hex>` digest. Validators must fail when a required screenshot is missing on disk or when the manifest screenshot digest is absent or does not match the staged file.
 
 ## Default Exclusions
 

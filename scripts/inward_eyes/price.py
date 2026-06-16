@@ -113,6 +113,7 @@ def normalize_candidate(raw_candidate: dict[str, Any], index: int, required_spec
         "provisional_price": _number_or_none(raw_candidate.get("provisional_price")),
         "currency": raw_candidate.get("currency"),
         "match_confidence": confidence,
+        "assessment_method": raw_candidate.get("assessment_method") or "provided_url_candidate_assessment",
         "manual_review_required": bool(raw_candidate.get("manual_review_required") or anomalies),
         "anomalies": anomalies,
     }
@@ -226,6 +227,7 @@ def normalize_quote(
         "stock": raw_quote.get("stock") or "unknown",
         "prices": prices,
         "price_basis": raw_quote.get("price_basis") or "visible_page",
+        "capture_method": raw_quote.get("capture_method") or "price_compare_input",
         "match_confidence": confidence,
         "selected_specs_confirmed": bool(raw_quote.get("selected_specs_confirmed")),
         "flags": flags,
@@ -372,7 +374,7 @@ def source_record_from_quote(quote: dict[str, Any]) -> dict[str, Any]:
         "page_type": "product_page",
         "accessed_at": quote["accessed_at"],
         "requires_login": False,
-        "capture_method": "price_compare_input",
+        "capture_method": quote.get("capture_method") or "price_compare_input",
         "evidence": {
             "screenshot": quote.get("screenshot"),
             "snapshot": None,

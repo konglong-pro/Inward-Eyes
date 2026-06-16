@@ -1,0 +1,66 @@
+[
+  {
+    "name": "two-matching-product-urls",
+    "input": "two-matching-product-urls.json",
+    "expected_status": "pass",
+    "expected_run_status": "complete",
+    "expected_lowest": "Q002",
+    "required_anomalies": []
+  },
+  {
+    "name": "low-confidence-spec-mismatch",
+    "input": "low-confidence-spec-mismatch.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["low_confidence_match", "incomplete_spec_match"]
+  },
+  {
+    "name": "coupon-action-required",
+    "input": "coupon-action-required.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["coupon_action_required"]
+  },
+  {
+    "name": "cart-required",
+    "input": "cart-required.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["cart_required"]
+  },
+  {
+    "name": "missing-shipping-fee",
+    "input": "missing-shipping-fee.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["unknown_shipping_fee"]
+  },
+  {
+    "name": "missing-screenshot-fails",
+    "input": "missing-screenshot-fails.json",
+    "expected_status": "fail",
+    "expected_run_status": "failed",
+    "expected_lowest": "Q001",
+    "required_error_terms": ["screenshot_required_but_missing"]
+  },
+  {
+    "name": "out-of-stock-excluded",
+    "input": "out-of-stock-excluded.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["out_of_stock_with_visible_price"]
+  },
+  {
+    "name": "different-region-manual-review",
+    "input": "different-region-manual-review.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001",
+    "required_anomalies": ["region_mismatch"]
+  }
+]

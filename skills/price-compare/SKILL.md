@@ -100,6 +100,12 @@ Use `complete`, `partial`, `failed`, or `aborted_by_policy` consistently with th
 
 ## Local Runner
 
+When working from approved product URLs, use:
+
+```bash
+python scripts/price_capture_runner.py --input <m9-spec.json> --output-root <output-root>
+```
+
 When working from a local price input JSON, use:
 
 ```bash

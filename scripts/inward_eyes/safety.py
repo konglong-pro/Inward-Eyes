@@ -18,6 +18,7 @@ GREEN_ACTIONS = {
     "read_visible_text": "reading visible text is read-only",
     "save_artifacts": "saving local artifacts is part of the workflow",
     "copy_current_url": "copying current URL is read-only",
+    "capture_current_visible_page": "capturing one approved visible page is read-only",
 }
 
 YELLOW_ACTIONS = {
@@ -50,4 +51,3 @@ def classify_action(action: str) -> ActionDecision:
     if action in RED_ACTIONS:
         return ActionDecision(action, "red", False, RED_ACTIONS[action])
     return ActionDecision(action, "unknown", False, "unknown browser action requires user review")
-

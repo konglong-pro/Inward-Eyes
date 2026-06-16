@@ -8,6 +8,10 @@
     "capture_id",
     "captured_at",
     "capture_method",
+    "login_state",
+    "contains_private_data",
+    "redaction_applied",
+    "redaction_notes",
     "source",
     "browser_context",
     "content",
@@ -32,10 +36,32 @@
       "type": "string",
       "minLength": 1
     },
+    "login_state": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "suspected",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "contains_private_data": {
+      "type": "boolean"
+    },
+    "redaction_applied": {
+      "type": "boolean"
+    },
+    "redaction_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "source": {
       "type": "object",
       "required": [
         "url",
+        "page_title",
         "requires_login"
       ],
       "properties": {
@@ -50,10 +76,8 @@
           ]
         },
         "page_title": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "minLength": 1
         },
         "site_name": {
           "type": [
@@ -80,7 +104,7 @@
         "login_state": {
           "type": "string",
           "enum": [
-            "known",
+            "confirmed",
             "suspected",
             "not_required",
             "unknown"
@@ -106,6 +130,12 @@
     },
     "content": {
       "type": "object",
+      "required": [
+        "html",
+        "text",
+        "accessibility_snapshot",
+        "selected_main_content"
+      ],
       "properties": {
         "html": {
           "type": [
@@ -138,9 +168,32 @@
     },
     "assets": {
       "type": "object",
+      "required": [
+        "screenshots",
+        "images"
+      ],
       "properties": {
         "screenshots": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "captured_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
         },
         "images": {
           "type": "array"
@@ -153,6 +206,7 @@
       "required": [
         "redaction_applied",
         "private_data_detected",
+        "contains_private_data",
         "redaction_notes"
       ],
       "properties": {
@@ -162,11 +216,17 @@
         "private_data_detected": {
           "type": "boolean"
         },
+        "contains_private_data": {
+          "type": "boolean"
+        },
         "redaction_notes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "screenshot_privacy_reviewed": {
+          "type": "boolean"
         }
       }
     },

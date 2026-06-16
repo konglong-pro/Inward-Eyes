@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "topic": "M8 unsupported claim failure",
+  "question": "Do unsupported claims fail after capture?",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://source-a.example.test/research/unsupported",
+      "approved": true,
+      "page_title": "Unsupported Claim Source A",
+      "selected_main_content": "Unsupported Claim Source A\n\nThis source exists but does not support the claim ledger entry."
+    },
+    {
+      "source_id": "S002",
+      "url": "https://source-b.example.test/research/unsupported",
+      "approved": true,
+      "page_title": "Unsupported Claim Source B",
+      "selected_main_content": "Unsupported Claim Source B\n\nThis source also exists but is not cited by the claim."
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "This claim intentionally has no source support.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [],
+      "support": [],
+      "single_source": false,
+      "confidence": "low"
+    }
+  ]
+}

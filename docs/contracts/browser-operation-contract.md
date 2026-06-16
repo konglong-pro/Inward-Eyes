@@ -39,6 +39,65 @@ Browser Use is optional and should not be the first default dependency for this 
 
 Computer Use is a GUI fallback. It can affect the user's desktop state and must be tightly scoped.
 
+## Current Chrome Boundary
+
+Current Chrome capture is allowed only for one user-approved visible page. The task scope is the current page itself, not the browser profile.
+
+Allowed observations:
+
+- Copy the visible URL.
+- Read visible title and page text.
+- Capture a DOM, accessibility, or structured snapshot of the approved page.
+- Save a screenshot only after privacy review/redaction policy is applied.
+
+Forbidden observations and actions:
+
+- Listing or scanning tabs.
+- Opening account menus, inboxes, orders, dashboards, settings, payment, security, messages, comments, follows, carts, checkout, or coupon claim flows.
+- Exporting browser profiles, cookies, tokens, HAR, local storage, session storage, passwords, payment data, network logs, or browser history.
+- Mutating account, cart, checkout, coupon, posting, messaging, follow, comment, security, or payment state.
+
+## Provided-URL Research Boundary
+
+For M8 `browser-research`, browser operation is limited to source URLs explicitly provided by the user or already approved current-browser captures in task scope.
+
+Allowed:
+
+- Open/capture each provided URL once for source evidence.
+- Read task-relevant page text or structured snapshots.
+- Save per-source `page_capture.json`, `SourceRecord`, and required screenshot evidence.
+
+Forbidden:
+
+- Search queries.
+- Source discovery.
+- Following related links or pagination.
+- Multi-hop browsing.
+- Capturing search result pages at scale.
+- Capturing comments, ads, recommendations, or marketing copy as factual sources by default.
+
+## Product-URL Price Boundary
+
+For M9 `price-compare`, browser operation is limited to ecommerce product URLs explicitly provided by the user.
+
+Allowed:
+
+- Open/capture each approved product URL once for quote evidence.
+- Read task-relevant product identity, selected specs, seller, stock, region, currency, and visible price components.
+- Save per-source `page_capture.json`, `SourceRecord`, and required product-page screenshot evidence.
+- Expand read-only product/spec/detail sections when that does not mutate account, cart, coupon, checkout, address, or payment state.
+
+Forbidden:
+
+- Platform search or keyword search.
+- Product discovery.
+- Following recommendation links.
+- Claiming coupons.
+- Adding to cart.
+- Proceeding to checkout.
+- Changing delivery address, region, account, payment, or security state without explicit future approval.
+- Stealth browsing, proxies, anti-bot bypass, CAPTCHA submission, or access-control bypass.
+
 ## Required Browser Task Setup
 
 Before using a browser tool, the skill must know:

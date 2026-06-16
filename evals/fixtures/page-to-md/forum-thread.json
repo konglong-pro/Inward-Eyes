@@ -3,6 +3,10 @@
   "capture_id": "cap_forum_thread_001",
   "captured_at": "2026-06-09T12:15:00Z",
   "capture_method": "synthetic_forum_capture",
+  "login_state": "not_required",
+  "contains_private_data": false,
+  "redaction_applied": false,
+  "redaction_notes": [],
   "source": {
     "url": "https://forum.example.test/t/evidence/42",
     "canonical_url": "https://forum.example.test/t/evidence/42",
@@ -66,25 +70,28 @@
       ]
     },
     "warnings": [
-      "published_at_not_found",
-      "screenshot_capture_failed"
+      "published_at_not_found"
     ]
   },
   "assets": {
-    "screenshots": [],
+    "screenshots": [
+      {
+        "path": "screenshots/synthetic-evidence.png",
+        "captured_at": "2026-06-09T12:15:00Z"
+      }
+    ],
     "images": []
   },
   "privacy": {
     "redaction_applied": false,
     "private_data_detected": false,
+    "contains_private_data": false,
     "redaction_notes": []
   },
   "screenshot_policy": {
     "required": true,
     "reason": "forum_thread",
-    "status": "capture_failed"
+    "status": "required_and_present"
   },
-  "warnings": [
-    "screenshot_capture_failed"
-  ]
+  "warnings": []
 }

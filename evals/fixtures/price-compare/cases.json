@@ -1,0 +1,43 @@
+[
+  {
+    "name": "product-quotes",
+    "input": "product-quotes.json",
+    "expected_status": "pass",
+    "required_report_terms": [
+      "Lowest Eligible Quote",
+      "Q001",
+      "ExampleShop",
+      "$799.00"
+    ],
+    "required_anomalies": [
+      "low_confidence_match",
+      "incomplete_spec_match",
+      "third_party_seller",
+      "unknown_shipping_fee",
+      "coupon_action_required"
+    ],
+    "expected_lowest": "Q001"
+  },
+  {
+    "name": "low-confidence-eligible",
+    "input": "low-confidence-eligible.json",
+    "expected_status": "pass",
+    "required_report_terms": [
+      "No eligible final lowest quote",
+      "Q001"
+    ],
+    "required_anomalies": [
+      "low_confidence_match"
+    ],
+    "expected_lowest": null
+  },
+  {
+    "name": "missing-screenshot",
+    "input": "missing-screenshot.json",
+    "expected_status": "fail",
+    "required_error_terms": [
+      "quote.Q001.screenshot_required_but_missing"
+    ],
+    "expected_lowest": "Q001"
+  }
+]

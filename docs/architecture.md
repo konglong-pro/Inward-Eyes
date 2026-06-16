@@ -45,8 +45,12 @@ docs/
 ```
 
 The initial documentation phase is complete. Current implementation covers local
-HTML and page-capture JSON conversion for `page-to-md`; browser/MCP capture is
-still future work.
+HTML and page-capture JSON conversion for `page-to-md`, a local
+browser-research input JSON workflow for claim ledger validation and report
+rendering, and a local price-compare input JSON workflow for price validation,
+anomaly reporting, CSV/Markdown/chart rendering, and source-record evidence.
+This is v0.2: deterministic local evidence workflows complete; real browser
+adapter layer not implemented. Browser/MCP capture is still future work.
 
 ## Runtime Output Model
 

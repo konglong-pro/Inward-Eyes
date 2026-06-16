@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "topic": "M8 single-source claim",
+  "question": "Can a single-source finding pass when marked?",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://source-a.example.test/research/single-source",
+      "approved": true,
+      "page_title": "Single Source A",
+      "source_type": "primary",
+      "selected_main_content": "Single Source A\n\nSingle-source findings are allowed when explicitly marked for review.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "only direct source for this synthetic claim"
+      }
+    },
+    {
+      "source_id": "S002",
+      "url": "https://source-b.example.test/research/single-source",
+      "approved": true,
+      "page_title": "Single Source B",
+      "selected_main_content": "Single Source B\n\nThis source is captured but does not support the single-source finding.",
+      "independence": {
+        "status": "independent",
+        "related_to": null,
+        "reason": "separate synthetic source"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "Single-source findings can pass when single_source is true.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Single-source findings are allowed when explicitly marked"
+        }
+      ],
+      "single_source": true,
+      "confidence": "medium"
+    }
+  ]
+}

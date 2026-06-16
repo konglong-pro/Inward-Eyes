@@ -3,6 +3,10 @@
   "capture_id": "cap_product_001",
   "captured_at": "2026-06-09T12:20:00Z",
   "capture_method": "synthetic_product_capture",
+  "login_state": "not_required",
+  "contains_private_data": false,
+  "redaction_applied": false,
+  "redaction_notes": [],
   "source": {
     "url": "https://shop.example.test/product/sku-123",
     "canonical_url": "https://shop.example.test/product/sku-123",
@@ -86,25 +90,28 @@
     },
     "warnings": [
       "author_not_found",
-      "published_at_not_found",
-      "screenshot_capture_failed"
+      "published_at_not_found"
     ]
   },
   "assets": {
-    "screenshots": [],
+    "screenshots": [
+      {
+        "path": "screenshots/synthetic-evidence.png",
+        "captured_at": "2026-06-09T12:20:00Z"
+      }
+    ],
     "images": []
   },
   "privacy": {
     "redaction_applied": false,
     "private_data_detected": false,
+    "contains_private_data": false,
     "redaction_notes": []
   },
   "screenshot_policy": {
     "required": true,
     "reason": "product_page",
-    "status": "capture_failed"
+    "status": "required_and_present"
   },
-  "warnings": [
-    "screenshot_capture_failed"
-  ]
+  "warnings": []
 }

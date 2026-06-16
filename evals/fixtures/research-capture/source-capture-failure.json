@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "topic": "M8 source capture failure",
+  "question": "Does one unavailable source produce a partial run?",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://source-a.example.test/research/failure",
+      "approved": true,
+      "page_title": "Failure Case Source A",
+      "source_type": "primary",
+      "selected_main_content": "Failure Case Source A\n\nTwo available sources can still support the claim when a third source fails.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "primary synthetic source"
+      }
+    },
+    {
+      "source_id": "S002",
+      "url": "https://source-b.example.test/research/failure",
+      "approved": true,
+      "page_title": "Failure Case Source B",
+      "source_type": "analysis",
+      "selected_main_content": "Failure Case Source B\n\nA capture failure should be surfaced as a warning and manual review requirement.",
+      "independence": {
+        "status": "independent",
+        "related_to": null,
+        "reason": "independent synthetic source"
+      }
+    },
+    {
+      "source_id": "S003",
+      "url": "https://unavailable.example.test/research/failure",
+      "approved": true,
+      "page_title": "Unavailable Source",
+      "failure_reason": "synthetic_source_unavailable"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "The run can remain useful when one provided source fails to capture.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Two available sources can still support the claim"
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "capture failure should be surfaced as a warning"
+        }
+      ],
+      "single_source": false,
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    {
+      "unknown_id": "U001",
+      "text": "The unavailable source could not be checked.",
+      "related_source_ids": [
+        "S003"
+      ],
+      "sources_checked": [
+        "S003"
+      ],
+      "reason": "synthetic_source_unavailable"
+    }
+  ]
+}

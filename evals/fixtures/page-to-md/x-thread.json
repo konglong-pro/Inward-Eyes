@@ -3,6 +3,10 @@
   "capture_id": "cap_x_thread_001",
   "captured_at": "2026-06-09T12:10:00Z",
   "capture_method": "synthetic_thread_capture",
+  "login_state": "not_required",
+  "contains_private_data": false,
+  "redaction_applied": false,
+  "redaction_notes": [],
   "source": {
     "url": "https://x.example.test/thread/100",
     "canonical_url": "https://x.example.test/thread/100",
@@ -81,25 +85,28 @@
       ]
     },
     "warnings": [
-      "published_at_not_found",
-      "screenshot_capture_failed"
+      "published_at_not_found"
     ]
   },
   "assets": {
-    "screenshots": [],
+    "screenshots": [
+      {
+        "path": "screenshots/synthetic-evidence.png",
+        "captured_at": "2026-06-09T12:10:00Z"
+      }
+    ],
     "images": []
   },
   "privacy": {
     "redaction_applied": false,
     "private_data_detected": false,
+    "contains_private_data": false,
     "redaction_notes": []
   },
   "screenshot_policy": {
     "required": true,
     "reason": "x_thread",
-    "status": "capture_failed"
+    "status": "required_and_present"
   },
-  "warnings": [
-    "screenshot_capture_failed"
-  ]
+  "warnings": []
 }

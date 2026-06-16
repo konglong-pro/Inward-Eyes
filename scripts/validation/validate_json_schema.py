@@ -60,14 +60,38 @@ def validate_minimal(schema: dict[str, Any], data: Any, path: str = "$") -> list
     return errors
 
 
+def resolve_pointer(data: Any, pointer: str) -> Any:
+    if pointer in {"", "/"}:
+        return data
+    if not pointer.startswith("/"):
+        raise ValueError("pointer must start with /")
+    current = data
+    for raw_part in pointer.lstrip("/").split("/"):
+        part = raw_part.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, list):
+            current = current[int(part)]
+        elif isinstance(current, dict):
+            current = current[part]
+        else:
+            raise ValueError(f"pointer segment not resolvable: {part}")
+    return current
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Minimal JSON schema validation for Inward Eyes artifacts.")
     parser.add_argument("--schema", required=True)
     parser.add_argument("--json", required=True)
+    parser.add_argument("--pointer", help="Optional JSON Pointer selecting a nested value to validate.")
     args = parser.parse_args()
 
     schema = json.loads(Path(args.schema).read_text(encoding="utf-8"))
     data = json.loads(Path(args.json).read_text(encoding="utf-8"))
+    if args.pointer:
+        try:
+            data = resolve_pointer(data, args.pointer)
+        except (KeyError, IndexError, ValueError) as exc:
+            print(f"pointer resolution failed: {exc}")
+            return 1
     errors = validate_minimal(schema, data)
     if errors:
         for error in errors:
@@ -79,4 +103,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

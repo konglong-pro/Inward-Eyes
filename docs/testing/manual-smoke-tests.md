@@ -33,6 +33,26 @@ Suggested procedure:
 3. Validate with `python scripts\validation\validate_browser_research.py <run_dir>`.
 4. Record only high-level notes here: date, source count, command shape, ignored run directory, validation result, warnings, and whether any source failed. Do not include source content.
 
+## Smoke Test: browser-research small-scope discovery
+
+Use this only for local manual verification. Do not commit copied webpage content, screenshots with private data, cookies, tokens, HAR files, browser profiles, passwords, payment details, or unrelated private data.
+
+Suggested safe scenarios:
+
+- 3-source public discovery.
+- 5-source public discovery.
+- Conflicting public sources.
+- Source unavailable.
+- Source excluded by domain policy.
+
+Suggested procedure:
+
+1. Prepare a small JSON discovery spec with the research question, `max_sources`, allowed domains or allowed source types, excluded domains or source types when relevant, recency when relevant, search queries, candidate URLs, candidate title/snippet if available, and selection rationale for selected candidates.
+2. Keep `max_sources` at 5 by default and never above 20.
+3. Run `python scripts\research_discovery_runner.py --input <discovery-spec.json> --output-root <ignored-output-root> --run-id <run-id>`.
+4. Validate with `python scripts\validation\validate_research_discovery.py <run_dir>` and `python scripts\validation\validate_browser_research.py <run_dir>`.
+5. Record only high-level notes here: date, selected source count, rejected candidate count, command shape, ignored run directory, validation result, warnings, and whether any source failed. Do not include source content.
+
 ## Smoke Test: price-compare product URLs
 
 Use this only for local manual verification. Do not commit real ecommerce screenshots containing personal account data, copied account-visible content, cookies, tokens, HAR files, browser profiles, passwords, payment details, addresses, order data, cart data, or checkout data.
@@ -50,6 +70,27 @@ Suggested procedure:
 2. Run `python scripts\price_capture_runner.py --input <spec.json> --output-root <ignored-output-root> --run-id <run-id>`.
 3. Validate with `python scripts\validation\validate_price_compare.py <run_dir>`.
 4. Record only high-level notes here: date, product URL count, command shape, ignored run directory, validation result, warnings, and whether any quote was excluded. Do not include page content or screenshots.
+
+## Smoke Test: price-compare approved candidate discovery
+
+Use this only for local manual verification. Do not commit real ecommerce screenshots containing personal account data, copied account-visible content, cookies, tokens, HAR files, browser profiles, passwords, payment details, addresses, order data, cart data, or checkout data.
+
+Suggested safe scenarios:
+
+- One approved platform with 3 candidates.
+- Two approved platforms with 5 total candidates.
+- Spec mismatch.
+- Duplicate or variant confusion.
+- Suspiciously low price.
+
+Suggested procedure:
+
+1. Prepare a small JSON candidate discovery spec with `target_product`, `required_specs`, `allowed_platforms`, `allowed_domains`, `max_candidates_per_platform`, region, currency, candidate URLs, visible product names/specs, seller, condition, provisional visible price, match confidence, mismatch flags, and selection rationale.
+2. Keep total candidates at or below 20. Use `approval_policy=review_only` unless automatic high-confidence handoff is explicitly intended.
+3. Run `python scripts\price_candidate_discovery_runner.py --input <candidate-discovery-spec.json> --output-root <ignored-output-root> --run-id <run-id>`.
+4. Validate candidate review with `python scripts\validation\validate_price_candidate_discovery.py <run_dir>`.
+5. If quote extraction proceeds, validate with `python scripts\validation\validate_price_compare.py <run_dir>`.
+6. Record only high-level notes here: date, platform count, candidate count, approved count, command shape, ignored run directory, validation result, warnings, and whether quote extraction proceeded. Do not include page content or screenshots.
 
 ## Smoke Test: public article
 

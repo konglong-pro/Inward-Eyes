@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "research_question": "Does M10A preserve syndicated duplicate independence metadata?",
+  "topic": "M10A syndicated duplicate",
+  "discovery_mode": "candidate_list",
+  "max_sources": 2,
+  "allowed_domains": [
+    "source-a.example.test",
+    "mirror.example.test"
+  ],
+  "allowed_source_types": [
+    "primary",
+    "syndicated"
+  ],
+  "excluded_domains": [],
+  "excluded_source_types": [],
+  "recency": null,
+  "search_queries": [
+    "m10a syndicated duplicate"
+  ],
+  "selection_rationale_required": true,
+  "candidates": [
+    {
+      "url": "https://source-a.example.test/m10a/syndicated",
+      "title": "Original Source",
+      "source_type": "primary",
+      "page_type": "article",
+      "rank": 1,
+      "selection_rationale": "Original source for syndicated duplicate handling.",
+      "selected_main_content": "Original Source\n\nSyndicated duplicates should not count as independent confirmation.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "original synthetic source"
+      }
+    },
+    {
+      "url": "https://mirror.example.test/m10a/syndicated",
+      "title": "Syndicated Mirror",
+      "source_type": "syndicated",
+      "page_type": "article",
+      "rank": 2,
+      "selection_rationale": "Syndicated duplicate selected to preserve not-independent metadata.",
+      "selected_main_content": "Syndicated Mirror\n\nThis mirror repeats the original source and is not independent.",
+      "independence": {
+        "status": "not_independent",
+        "related_to": "S001",
+        "reason": "synthetic syndicated duplicate"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "Syndicated duplicates do not provide independent confirmation.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "should not count as independent confirmation"
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "not independent"
+        }
+      ],
+      "single_source": true,
+      "confidence": "medium"
+    }
+  ]
+}

@@ -12,10 +12,11 @@ You compare ecommerce prices without collapsing product identity, specs, seller 
 Accept one of:
 
 - User-provided product URLs with a target product and required specs.
+- Approved candidate discovery scope with target product, required specs, approved platforms/domains, caps, region/currency, and candidate records.
 - Captured product page records prepared for Inward Eyes.
 - Local price-compare input JSON.
 
-Start with user-provided product URLs. Do not begin with broad search discovery unless a future phase explicitly approves that scope.
+Start with user-provided product URLs unless the user explicitly requests M10B approved candidate discovery with bounded platform/domain scope.
 
 ## Required Outputs
 
@@ -46,19 +47,25 @@ Create a run directory outside the plugin package:
    - Do not search for additional candidates.
    - Gather product name, model number, specs, platform, seller, condition, URL, provisional price, and `match_confidence`.
    - Route low-confidence or incomplete spec matches to manual review.
-4. Quote extraction:
+4. Approved candidate discovery:
+   - Use only when the user provides target product, required specs, approved platforms/domains, and candidate caps.
+   - Record candidate product URLs, visible product names/specs, seller, condition, provisional visible price, match confidence, mismatch flags, and rationale.
+   - Reject candidates outside scope, duplicate product URLs, recommendation links, recursive links, non-public URLs, or login-required discovery.
+   - Route low-confidence, incomplete spec, seller-mismatched, and condition-mismatched candidates to manual review.
+   - Pass candidates to quote extraction only when explicitly approved or when `auto_high_confidence` policy allows it.
+5. Quote extraction:
    - Confirm selected specs.
    - Extract list price, sale price, coupon price, shipping fee, estimated total, stock, seller, region, currency, condition, URL, and timestamp.
    - Record `quote_context`, `quote_context_hash`, and `estimated_total.calculation`.
    - Capture screenshot evidence for product pages.
-5. Keep product names and product specs separate.
-6. Keep list price, sale price, coupon price, shipping fee, and estimated total separate.
-7. Mark coupon, cart, checkout, membership, and address-change requirements explicitly.
-8. Exclude low-confidence, incomplete-spec, out-of-stock, unknown-total, cart/checkout/coupon-claim, address-change, incompatible context, and manual-review-required quotes from final lowest-price conclusions.
-9. Render CSV, Markdown report, anomalies, and chart from validated structured data.
-10. Do not mark a run complete if validation fails.
+6. Keep product names and product specs separate.
+7. Keep list price, sale price, coupon price, shipping fee, and estimated total separate.
+8. Mark coupon, cart, checkout, membership, and address-change requirements explicitly.
+9. Exclude low-confidence, incomplete-spec, out-of-stock, unknown-total, cart/checkout/coupon-claim, address-change, incompatible context, and manual-review-required quotes from final lowest-price conclusions.
+10. Render CSV, Markdown report, anomalies, and chart from validated structured data.
+11. Do not mark a run complete if validation fails.
 
-Future broad discovery is out of scope for this skill version.
+Broad web product search, platform crawling, recommendation following, coupon claiming, cart, checkout, address/account mutation, login-required discovery, stealth, proxies, CAPTCHA handling, and anti-bot bypass remain out of scope.
 
 ## Quote Context
 
@@ -104,6 +111,12 @@ When working from approved product URLs, use:
 
 ```bash
 python scripts/price_capture_runner.py --input <m9-spec.json> --output-root <output-root>
+```
+
+When working from approved bounded candidate discovery scope, use:
+
+```bash
+python scripts/price_candidate_discovery_runner.py --input <m10b-candidate-discovery-spec.json> --output-root <output-root>
 ```
 
 When working from a local price input JSON, use:

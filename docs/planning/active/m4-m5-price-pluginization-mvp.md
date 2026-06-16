@@ -23,7 +23,7 @@ Completed. The user approved starting M4 and M5 on 2026-06-09; the closeout is `
 
 Implement the smallest deterministic M4/M5 loop:
 
-- Local price input JSON with candidate discovery and quote extraction sections.
+- Local price input JSON with candidate assessment and quote extraction sections.
 - `prices.json` as the structured price comparison record.
 - `prices.csv`, `price-report.md`, `anomalies.md`, and `price-chart.png` rendered from structured data.
 - One source record per quote and screenshot evidence policy enforcement.

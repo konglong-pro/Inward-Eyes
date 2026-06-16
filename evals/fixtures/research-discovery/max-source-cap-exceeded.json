@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "research_question": "Should M10A reject a source cap above the hard maximum?",
+  "topic": "M10A hard cap",
+  "discovery_mode": "candidate_list",
+  "max_sources": 21,
+  "allowed_domains": [
+    "example.test"
+  ],
+  "allowed_source_types": [
+    "primary"
+  ],
+  "excluded_domains": [],
+  "excluded_source_types": [],
+  "recency": null,
+  "search_queries": [
+    "m10a hard source cap"
+  ],
+  "selection_rationale_required": true,
+  "candidates": [
+    {
+      "url": "https://source-a.example.test/m10a/cap",
+      "title": "M10A Cap Source",
+      "source_type": "primary",
+      "selection_rationale": "Valid candidate, but the run cap is invalid.",
+      "selected_main_content": "The source itself is valid, but max_sources is too high."
+    }
+  ]
+}

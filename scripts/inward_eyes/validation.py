@@ -7,6 +7,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from inward_eyes.discovery import validate_research_discovery_run
+from inward_eyes.price_discovery import validate_price_candidate_discovery_run
+
 BOILERPLATE_PATTERNS = (
     "sign in",
     "subscribe",
@@ -504,6 +507,12 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             if raw_path and not (run_dir / str(raw_path)).exists():
                 errors.append(f"manifest.validation.{key}_missing_on_disk:{raw_path}")
 
+    if (run_dir / "artifacts" / "discovery-log.json").exists():
+        discovery_report = validate_research_discovery_run(run_dir)
+        errors.extend(discovery_report.get("errors", []))
+        warnings.extend(discovery_report.get("warnings", []))
+        manual_review = manual_review or bool(discovery_report.get("requires_manual_review"))
+
     status = "fail" if errors else "pass"
     reasons = _review_reasons(errors, "blocking", "validation/claim-coverage-report.json") + _review_reasons(
         list(dict.fromkeys(warnings)) if manual_review else [], "warning", "validation/claim-coverage-report.json"
@@ -837,6 +846,12 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         raw_path = _field(manifest, "validation.report_path")
         if raw_path and not (run_dir / str(raw_path)).exists():
             errors.append(f"manifest.validation.report_path_missing_on_disk:{raw_path}")
+
+    if (run_dir / "artifacts" / "candidates.json").exists():
+        candidate_report = validate_price_candidate_discovery_run(run_dir)
+        errors.extend(candidate_report.get("errors", []))
+        warnings.extend(candidate_report.get("warnings", []))
+        manual_review = manual_review or bool(candidate_report.get("requires_manual_review"))
 
     status = "fail" if errors else "pass"
     warning_reasons = list(dict.fromkeys(warnings + manual_review_codes)) if manual_review else []

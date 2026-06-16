@@ -98,6 +98,43 @@ evidence/source-###/screenshots/
 
 Product-page screenshots are required. Missing screenshot evidence fails validation for included product-page quotes unless the quote is explicitly excluded and the run is partial.
 
+For M10B approved product candidate discovery, candidate artifacts are required before quote extraction:
+
+```text
+artifacts/candidates.json
+artifacts/candidates.csv
+artifacts/candidate-review.md
+capture/candidate-search/
+validation/candidate-validation-report.json
+validation/warnings.md
+```
+
+Each candidate must record platform, product URL, visible product name, visible specs, seller, condition, provisional price when visible, match confidence, mismatch flags, selection/rejection/review rationale, manual-review status, approval status, and timestamp. Rejected candidates are evidence for scope enforcement and are not captured as quotes.
+
+When M10B quote extraction proceeds, approved candidates must be converted into the M9 source directory shape:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+Product-page screenshots remain required for every captured quote. Candidate records do not replace M9 price records, source records, screenshots, or price validation reports.
+
+For M10A browser-research discovery, selected sources use the M8 source directory shape:
+
+```text
+artifacts/discovery-log.json
+artifacts/discovery-log.md
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+validation/discovery-validation-report.json
+validation/claim-coverage-report.json
+```
+
+The discovery log must record every considered candidate with query, URL, title/snippet when available, accepted/rejected status, reason, and timestamp. Rejected candidates are evidence for scope enforcement, not captured sources. Every accepted candidate must have selection rationale and a matching `SourceRecord`.
+
 Screenshot policy must be explicit. Allowed statuses:
 
 - `required_and_present`

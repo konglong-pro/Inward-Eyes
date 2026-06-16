@@ -110,4 +110,12 @@ python scripts/research_capture_runner.py --input <m8-research-capture-spec.json
 
 Do not use M8 as search or discovery. It only captures sources the user already provided or already approved in current-browser scope.
 
+For M10A small-scope public discovery, use a discovery spec with a research question, maximum source count, allowed domains or source types, excluded domains or source types when relevant, recency when relevant, search queries, candidates, and selection rationale:
+
+```bash
+python scripts/research_discovery_runner.py --input <m10a-discovery-spec.json> --output-root <output-root> --run-id <run-id>
+```
+
+M10A records `artifacts/discovery-log.json` and `artifacts/discovery-log.md`, captures selected sources only through the M8 pipeline, and writes `validation/discovery-validation-report.json`. Do not use M10A for broad crawling, recursive link following, login-required discovery, private data capture, ecommerce candidate discovery, monitoring, scheduled runs, or CAPTCHA/anti-bot bypass.
+
 Use the project root as the working directory.

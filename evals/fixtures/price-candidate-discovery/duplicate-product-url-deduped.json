@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "target_product": "Example Phone",
+  "required_specs": {
+    "storage": "256GB",
+    "color": "Black"
+  },
+  "allowed_platforms": [
+    "ExampleShop"
+  ],
+  "allowed_domains": [
+    "shop.example.test"
+  ],
+  "max_candidates_per_platform": 3,
+  "region": "US",
+  "currency": "USD",
+  "approval_policy": "auto_high_confidence",
+  "candidates": [
+    {
+      "candidate_id": "K001",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black",
+      "visible_product_name": "Example Phone 256GB Black",
+      "visible_specs": {
+        "storage": "256GB",
+        "color": "Black"
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "provisional_price": 799.0,
+      "shipping_fee": 0.0,
+      "estimated_total": 799.0,
+      "match_confidence": 0.96,
+      "selection_rationale": "First instance of this product URL is selected.",
+      "selected_main_content": "Example Phone 256GB Black. Seller ExampleShop. Sale price 799. Shipping 0. In stock.",
+      "screenshot": "../price-capture/screenshots/product-a.png"
+    },
+    {
+      "candidate_id": "K002",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black",
+      "visible_product_name": "Example Phone 256GB Black Duplicate",
+      "visible_specs": {
+        "storage": "256GB",
+        "color": "Black"
+      },
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 799.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Duplicate URL should be rejected."
+    }
+  ]
+}

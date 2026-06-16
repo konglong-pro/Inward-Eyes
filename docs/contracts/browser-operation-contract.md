@@ -76,6 +76,45 @@ Forbidden:
 - Capturing search result pages at scale.
 - Capturing comments, ads, recommendations, or marketing copy as factual sources by default.
 
+## Small-Scope Research Discovery Boundary
+
+For M10A `browser-research`, discovery may identify public source candidates only inside explicit user-approved task scope.
+
+Required scope:
+
+- Research question.
+- Maximum source count.
+- Allowed domains or allowed source types.
+- Excluded domains or source types when relevant.
+- Recency requirement when relevant.
+- Search queries or equivalent candidate-query context.
+
+Limits:
+
+- Default maximum is 5 selected sources.
+- Hard maximum is 20 selected sources.
+- Public HTTP(S) sources only.
+- Capture selected sources only.
+- Save a discovery log before treating selected URLs as research sources.
+- Every selected source must have selection rationale.
+
+Allowed:
+
+- Search public pages within the approved task scope.
+- Record candidate title/snippet when available.
+- Accept or reject candidates with reasons.
+- Capture accepted source URLs once through the M8 provided-URL capture pipeline.
+
+Forbidden:
+
+- Broad crawling.
+- Recursive link following beyond approved selected sources.
+- Login-required source discovery.
+- Private data capture.
+- Search or discovery for ecommerce candidates.
+- Capturing every search result by default.
+- Stealth browsing, proxies, CAPTCHA handling, anti-bot bypass, or access-control bypass.
+
 ## Product-URL Price Boundary
 
 For M9 `price-compare`, browser operation is limited to ecommerce product URLs explicitly provided by the user.
@@ -97,6 +136,52 @@ Forbidden:
 - Proceeding to checkout.
 - Changing delivery address, region, account, payment, or security state without explicit future approval.
 - Stealth browsing, proxies, anti-bot bypass, CAPTCHA submission, or access-control bypass.
+
+## Approved Product Candidate Discovery Boundary
+
+For M10B `price-compare`, browser operation is limited to explicitly approved ecommerce platforms/domains and a user-provided product target with required specs.
+
+Required scope:
+
+- Target product.
+- Required product specs.
+- Approved platforms.
+- Approved domains.
+- Maximum candidates per platform.
+- Region.
+- Currency.
+- Excluded sellers or seller preferences when relevant.
+
+Limits:
+
+- Default maximum is 3 candidates per platform.
+- Hard maximum is 20 total candidates.
+- Candidate discovery records only product-page candidates.
+- Quote extraction is delegated to the M9 product-URL price capture pipeline.
+- Product identity and required specs remain separate throughout candidate assessment and quote capture.
+- Candidate records must include match confidence and selection/rejection/review rationale.
+
+Allowed:
+
+- Search or inspect approved ecommerce platforms/domains within the task scope.
+- Record visible product name, visible specs, seller, condition, provisional visible price, URL, and match confidence.
+- Deduplicate product URLs.
+- Route low-confidence, incomplete, seller-mismatched, or condition-mismatched candidates to manual review.
+- Pass high-confidence candidates to M9 quote capture only when policy allows automatic approval, or when explicitly approved.
+
+Forbidden:
+
+- Broad web product search.
+- Unlimited platform crawling.
+- Recursive link following beyond approved candidate pages.
+- Following recommendation carousels or related-product links.
+- Login-required discovery.
+- Coupon claiming.
+- Add-to-cart.
+- Checkout.
+- Address, region, payment, security, or account mutation.
+- Marketplace-wide monitoring.
+- Stealth browsing, proxies, CAPTCHA handling, anti-bot bypass, or access-control bypass.
 
 ## Required Browser Task Setup
 

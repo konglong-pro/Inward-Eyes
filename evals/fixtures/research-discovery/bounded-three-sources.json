@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "research_question": "Can M10A discover a bounded set of public research sources?",
+  "topic": "M10A bounded discovery",
+  "discovery_mode": "candidate_list",
+  "max_sources": 3,
+  "allowed_domains": [
+    "example.test"
+  ],
+  "allowed_source_types": [
+    "primary",
+    "analysis",
+    "official"
+  ],
+  "excluded_domains": [],
+  "excluded_source_types": [],
+  "recency": null,
+  "search_queries": [
+    "m10a bounded public source discovery"
+  ],
+  "selection_rationale_required": true,
+  "summary": "M10A discovery is bounded by scope, source count, and selected source rationale.",
+  "candidates": [
+    {
+      "url": "https://source-a.example.test/m10a/discovery",
+      "title": "M10A Source A",
+      "snippet": "Discovery is bounded by max source count.",
+      "source_type": "primary",
+      "page_type": "docs",
+      "rank": 1,
+      "selection_rationale": "Primary synthetic source defining bounded discovery.",
+      "selected_main_content": "M10A Source A\n\nDiscovery is explicitly bounded by max source count.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "primary synthetic source"
+      }
+    },
+    {
+      "url": "https://source-b.example.test/m10a/discovery",
+      "title": "M10A Source B",
+      "snippet": "Selected source rationale is recorded.",
+      "source_type": "analysis",
+      "page_type": "article",
+      "rank": 2,
+      "selection_rationale": "Independent synthetic source confirming rationale logging.",
+      "selected_main_content": "M10A Source B\n\nEach selected source records a selection rationale.",
+      "independence": {
+        "status": "independent",
+        "related_to": null,
+        "reason": "independent synthetic confirmation"
+      }
+    },
+    {
+      "url": "https://source-c.example.test/m10a/discovery",
+      "title": "M10A Source C",
+      "snippet": "Selected URLs feed the provided URL capture pipeline.",
+      "source_type": "official",
+      "page_type": "docs",
+      "rank": 3,
+      "selection_rationale": "Independent synthetic source confirming M8 capture reuse.",
+      "selected_main_content": "M10A Source C\n\nSelected URLs are passed into the existing provided URL capture pipeline.",
+      "independence": {
+        "status": "independent",
+        "related_to": null,
+        "reason": "second independent synthetic confirmation"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "M10A discovery selects a bounded set of scoped public sources before running the provided URL capture pipeline.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002",
+        "S003"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "bounded by max source count"
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "records a selection rationale"
+        },
+        {
+          "source_id": "S003",
+          "support_type": "direct",
+          "excerpt": "passed into the existing provided URL capture pipeline"
+        }
+      ],
+      "single_source": false,
+      "confidence": "high"
+    }
+  ]
+}

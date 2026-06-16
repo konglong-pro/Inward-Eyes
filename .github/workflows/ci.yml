@@ -27,14 +27,18 @@ jobs:
           scripts/capture/page_to_md_browser_runner.py
           scripts/capture/current_chrome_capture.py
           scripts/capture/current_chrome_page_to_md_runner.py
+          scripts/research_discovery_runner.py
           scripts/research_capture_runner.py
+          scripts/price_candidate_discovery_runner.py
           scripts/price_capture_runner.py
           scripts/markdown/render_page_md.py
           scripts/validation/validate_page_to_md.py
           scripts/validation/validate_page_capture.py
           scripts/validation/validate_json_schema.py
           scripts/validation/classify_browser_action.py
+          scripts/validation/validate_research_discovery.py
           scripts/validation/validate_browser_research.py
+          scripts/validation/validate_price_candidate_discovery.py
           scripts/validation/validate_price_compare.py
           scripts/inward_eyes/__init__.py
           scripts/inward_eyes/capture.py
@@ -42,6 +46,8 @@ jobs:
           scripts/inward_eyes/io.py
           scripts/inward_eyes/markdown.py
           scripts/inward_eyes/safety.py
+          scripts/inward_eyes/discovery.py
+          scripts/inward_eyes/price_discovery.py
           scripts/inward_eyes/validation.py
           scripts/inward_eyes/research.py
           scripts/inward_eyes/price.py
@@ -50,8 +56,10 @@ jobs:
           evals/run_eval.py
           evals/run_safety_eval.py
           evals/run_research_eval.py
+          evals/run_research_discovery_eval.py
           evals/run_research_capture_eval.py
           evals/run_price_eval.py
+          evals/run_price_candidate_discovery_eval.py
           evals/run_price_capture_eval.py
           evals/run_capture_adapter_eval.py
           evals/run_cross_skill_schema_eval.py
@@ -65,11 +73,17 @@ jobs:
       - name: Run browser-research evals
         run: python evals/run_research_eval.py
 
+      - name: Run browser-research discovery evals
+        run: python evals/run_research_discovery_eval.py
+
       - name: Run browser-research capture evals
         run: python evals/run_research_capture_eval.py
 
       - name: Run price-compare evals
         run: python evals/run_price_eval.py
+
+      - name: Run price-compare candidate discovery evals
+        run: python evals/run_price_candidate_discovery_eval.py
 
       - name: Run price-compare capture evals
         run: python evals/run_price_capture_eval.py
@@ -88,24 +102,40 @@ jobs:
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/page-to-md/eval-public-article/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/page-to-md/eval-public-article/validation/validation-report.json
           python scripts/validation/validate_json_schema.py --schema schemas/research_report.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/artifacts/claims.json
+          python scripts/validation/validate_json_schema.py --schema schemas/research_discovery_input.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/input.json
+          python scripts/validation/validate_json_schema.py --schema schemas/discovery_log.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/artifacts/discovery-log.json
           python scripts/validation/validate_json_schema.py --schema schemas/research_report.schema.json --json evals/.tmp/research-capture/eval-two-source-supported/artifacts/claims.json
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/manifest.json
+          python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/research-capture/eval-two-source-supported/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/validation/claim-coverage-report.json
+          python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/validation/discovery-validation-report.json
+          python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/validation/claim-coverage-report.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/research-capture/eval-two-source-supported/validation/claim-coverage-report.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_compare_run.schema.json --json evals/.tmp/price-compare/eval-product-quotes/artifacts/prices.json
+          python scripts/validation/validate_json_schema.py --schema schemas/price_candidate_discovery_input.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/input.json
+          python scripts/validation/validate_json_schema.py --schema schemas/price_candidates.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/artifacts/candidates.json
+          python scripts/validation/validate_json_schema.py --schema schemas/price_compare_run.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/artifacts/prices.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_compare_run.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/artifacts/prices.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-compare/eval-product-quotes/artifacts/prices.json --pointer /quotes/0
+          python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/artifacts/prices.json --pointer /quotes/0
           python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/artifacts/prices.json --pointer /quotes/0
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/price-compare/eval-product-quotes/manifest.json
+          python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/price-compare/eval-product-quotes/validation/price-validation-report.json
+          python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/validation/candidate-validation-report.json
+          python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/validation/price-validation-report.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/validation/price-validation-report.json
 
       - name: Validate run directories
         run: |
           python scripts/validation/validate_page_to_md.py evals/.tmp/page-to-md/eval-public-article
           python scripts/validation/validate_browser_research.py evals/.tmp/browser-research/eval-evidence-backed-research
+          python scripts/validation/validate_research_discovery.py evals/.tmp/research-discovery/eval-bounded-three-sources
+          python scripts/validation/validate_browser_research.py evals/.tmp/research-discovery/eval-bounded-three-sources
           python scripts/validation/validate_browser_research.py evals/.tmp/research-capture/eval-two-source-supported
           python scripts/validation/validate_price_compare.py evals/.tmp/price-compare/eval-product-quotes
+          python scripts/validation/validate_price_candidate_discovery.py evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap
+          python scripts/validation/validate_price_compare.py evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap
           python scripts/validation/validate_price_compare.py evals/.tmp/price-capture/eval-two-matching-product-urls

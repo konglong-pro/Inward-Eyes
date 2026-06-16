@@ -44,13 +44,15 @@ evals/
 docs/
 ```
 
-The initial documentation phase is complete. Current implementation covers local
-HTML and page-capture JSON conversion for `page-to-md`, a local
-browser-research input JSON workflow for claim ledger validation and report
-rendering, and a local price-compare input JSON workflow for price validation,
-anomaly reporting, CSV/Markdown/chart rendering, and source-record evidence.
-This is v0.2: deterministic local evidence workflows complete; real browser
-adapter layer not implemented. Browser/MCP capture is still future work.
+Current implementation covers local HTML and page-capture JSON conversion for
+`page-to-md`, browser adapter boundary captures for approved public/current
+pages, provided-URL browser-research capture, provided product-URL price
+capture, and M10 bounded discovery wrappers for research sources and price
+candidates.
+
+The implementation remains small-scope and evidence-first. It is not a broad
+crawler, marketplace monitor, automated purchasing flow, unrestricted logged-in
+browser operator, or marketplace-distributed package.
 
 ## Runtime Output Model
 
@@ -87,6 +89,8 @@ The output root must be configurable by task or workspace.
 `browser-research` handles multi-source research. Its core artifact is a claim ledger, not just a prose summary.
 
 `price-compare` handles product quote extraction and comparison. Its core problem is product/spec identity, not just price capture.
+
+M10 discovery wrappers may propose scoped public research sources or approved ecommerce candidates, but the downstream research and price runners remain the source of truth for claims, quotes, source records, screenshots, and validation.
 
 ## Tool Routing Summary
 

@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/price_candidates.schema.json",
+  "title": "PriceCandidates",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_type",
+    "target_product",
+    "required_specs",
+    "allowed_platforms",
+    "allowed_domains",
+    "max_candidates_per_platform",
+    "hard_max_total_candidates",
+    "region",
+    "currency",
+    "approval_policy",
+    "generated_at",
+    "candidates",
+    "approved_candidate_urls",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "const": "price-candidate-discovery"
+    },
+    "target_product": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_specs": {
+      "type": "object"
+    },
+    "allowed_platforms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "max_candidates_per_platform": {
+      "type": "integer"
+    },
+    "hard_max_total_candidates": {
+      "type": "integer"
+    },
+    "region": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "excluded_sellers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "seller_preferences": {
+      "type": "object"
+    },
+    "approval_policy": {
+      "type": "string",
+      "enum": [
+        "auto_high_confidence",
+        "review_only"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "assessment_method",
+          "platform",
+          "product_url",
+          "visible_product_name",
+          "visible_specs",
+          "seller",
+          "condition",
+          "match_confidence",
+          "mismatch_flags",
+          "selection_rationale",
+          "requires_manual_review",
+          "approved_for_quote_capture",
+          "status"
+        ],
+        "properties": {
+          "candidate_id": {
+            "type": "string"
+          },
+          "assessment_method": {
+            "type": "string",
+            "const": "approved_candidate_discovery"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "product_url": {
+            "type": "string"
+          },
+          "visible_product_name": {
+            "type": "string"
+          },
+          "visible_specs": {
+            "type": "object"
+          },
+          "seller": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "provisional_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "match_confidence": {
+            "type": "number"
+          },
+          "mismatch_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selection_rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejection_rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requires_manual_review": {
+            "type": "boolean"
+          },
+          "approved_for_quote_capture": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved_for_quote_capture",
+              "needs_manual_review",
+              "rejected"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "approved_candidate_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

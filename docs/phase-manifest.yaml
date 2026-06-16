@@ -1,9 +1,9 @@
 current:
   inward_eyes:
-    phase_id: m9_price_product_url_capture_mvp
-    title: "v0.6 price-compare product-URL browser quote capture MVP completed"
+    phase_id: m10_small_scope_discovery
+    title: "M10 small-scope discovery closeout completed"
     status: completed
-    canonical_spec: docs/planning/active/m9-price-product-url-capture-mvp.md
+    canonical_spec: docs/planning/archive/m10-small-scope-discovery-closeout.md
     agent_rules: docs/agents/current/browser-operator-agent-rules.md
     release_gate: docs/active/current.md#current-gates
     allowed_areas:
@@ -11,6 +11,7 @@ current:
       - README.md
       - CONTEXT.md
       - docs/**
+      - .github/workflows/ci.yml
       - skills/page-to-md/**
       - skills/browser-research/**
       - skills/price-compare/**
@@ -18,9 +19,15 @@ current:
       - scripts/validation/**
       - scripts/inward_eyes/**
       - scripts/page_to_md_runner.py
+      - scripts/research_discovery_runner.py
       - scripts/research_capture_runner.py
+      - scripts/price_candidate_discovery_runner.py
       - scripts/price_capture_runner.py
       - schemas/page_capture.schema.json
+      - schemas/research_discovery_input.schema.json
+      - schemas/discovery_log.schema.json
+      - schemas/price_candidate_discovery_input.schema.json
+      - schemas/price_candidates.schema.json
       - evals/**
     forbidden_areas:
       - other schemas unless explicitly approved
@@ -102,4 +109,43 @@ phases:
       - evals/run_price_capture_eval.py
     supersedes:
       - m8_research_provided_url_capture_mvp
+    superseded_by: m10a_research_small_scope_discovery_mvp
+  m10a_research_small_scope_discovery_mvp:
+    status: completed
+    canonical_spec: docs/planning/active/m10a-research-small-scope-discovery-mvp.md
+    closeout: docs/planning/archive/m10a-research-small-scope-discovery-mvp-closeout.md
+    evidence:
+      - evals/run_research_discovery_eval.py
+      - schemas/research_discovery_input.schema.json
+      - schemas/discovery_log.schema.json
+    supersedes:
+      - m9_price_product_url_capture_mvp
+    superseded_by: m10_small_scope_discovery
+  m10b_price_approved_candidate_discovery_mvp:
+    status: completed
+    canonical_spec: docs/planning/active/m10b-price-approved-candidate-discovery-mvp.md
+    closeout: docs/planning/archive/m10b-price-approved-candidate-discovery-mvp-closeout.md
+    evidence:
+      - evals/run_price_candidate_discovery_eval.py
+      - schemas/price_candidate_discovery_input.schema.json
+      - schemas/price_candidates.schema.json
+    supersedes:
+      - m10a_research_small_scope_discovery_mvp
+    superseded_by: m10_small_scope_discovery
+  m10_small_scope_discovery:
+    status: completed
+    canonical_spec: docs/planning/archive/m10-small-scope-discovery-closeout.md
+    closeout: docs/planning/archive/m10-small-scope-discovery-closeout.md
+    evidence:
+      - docs/planning/archive/m10a-research-small-scope-discovery-mvp-closeout.md
+      - docs/planning/archive/m10b-price-approved-candidate-discovery-mvp-closeout.md
+      - evals/run_research_discovery_eval.py
+      - evals/run_price_candidate_discovery_eval.py
+      - schemas/research_discovery_input.schema.json
+      - schemas/discovery_log.schema.json
+      - schemas/price_candidate_discovery_input.schema.json
+      - schemas/price_candidates.schema.json
+    supersedes:
+      - m10a_research_small_scope_discovery_mvp
+      - m10b_price_approved_candidate_discovery_mvp
     superseded_by: null

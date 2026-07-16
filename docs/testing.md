@@ -6,9 +6,9 @@ Testing for Inward Eyes must prove that outputs are structured, evidence-backed,
 
 ## Current Command Status
 
-Run from `E:\Inward Eyes`.
+Run from the repository root.
 
-The current release class is post-M12-M20 local operations hardening. CI covers repository-contained local workflows, synthetic adapter/discovery contract tests, deterministic replay evals, profile validation, local review, batch/retry/indexing, package dry-run, and exporters. It does not run live browser/network smoke tests.
+The current release class is post-M21 contract-integrity hardening. CI covers repository-contained local workflows, synthetic adapter/discovery contract tests, deterministic replay evals, profile validation, local review, batch/retry/indexing, reproducible package dry-run, exporters, contract drift, strict continuation/admission boundaries, and privacy-retention regression tests. It does not run live browser/network smoke tests.
 
 - M0-M2/page-to-md compile check: `python -m py_compile scripts\page_to_md_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\inward_eyes\__init__.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py evals\run_eval.py evals\run_safety_eval.py`
 - M3 research compile check: `python -m py_compile scripts\browser_research_runner.py scripts\validation\validate_browser_research.py scripts\inward_eyes\research.py scripts\inward_eyes\validation.py evals\run_research_eval.py`
@@ -17,7 +17,8 @@ The current release class is post-M12-M20 local operations hardening. CI covers 
 - M10A research discovery compile check: `python -m py_compile scripts\research_discovery_runner.py scripts\validation\validate_research_discovery.py scripts\inward_eyes\discovery.py scripts\inward_eyes\validation.py evals\run_research_discovery_eval.py`
 - M10B price candidate discovery compile check: `python -m py_compile scripts\price_candidate_discovery_runner.py scripts\validation\validate_price_candidate_discovery.py scripts\inward_eyes\price_discovery.py scripts\inward_eyes\validation.py evals\run_price_candidate_discovery_eval.py`
 - Capture adapter compile check: `python -m py_compile scripts\capture\playwright_mcp_capture.py scripts\capture\page_to_md_browser_runner.py scripts\capture\current_chrome_capture.py scripts\capture\current_chrome_page_to_md_runner.py scripts\validation\validate_page_capture.py scripts\inward_eyes\capture.py evals\run_capture_adapter_eval.py evals\run_cross_skill_schema_eval.py`
-- Full compile gate: `python -m py_compile scripts\page_to_md_runner.py scripts\capture\playwright_mcp_capture.py scripts\capture\page_to_md_browser_runner.py scripts\capture\current_chrome_capture.py scripts\capture\current_chrome_page_to_md_runner.py scripts\research_discovery_runner.py scripts\research_capture_runner.py scripts\price_candidate_discovery_runner.py scripts\price_capture_runner.py scripts\adapter_matrix_runner.py scripts\site_profile_runner.py scripts\privacy_report_runner.py scripts\review_run.py scripts\run_database.py scripts\export_run.py scripts\plugin_package.py scripts\batch_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_page_capture.py scripts\validation\validate_json_schema.py scripts\validation\classify_browser_action.py scripts\validation\validate_research_discovery.py scripts\validation\validate_browser_research.py scripts\validation\validate_price_candidate_discovery.py scripts\validation\validate_price_compare.py scripts\inward_eyes\__init__.py scripts\inward_eyes\capture.py scripts\inward_eyes\discovery.py scripts\inward_eyes\price_discovery.py scripts\inward_eyes\adapter_matrix.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py scripts\inward_eyes\research.py scripts\inward_eyes\price.py scripts\inward_eyes\site_profiles.py scripts\inward_eyes\privacy.py scripts\inward_eyes\review.py scripts\inward_eyes\run_index.py scripts\inward_eyes\exporters.py scripts\inward_eyes\distribution.py scripts\browser_research_runner.py scripts\price_compare_runner.py evals\run_eval.py evals\run_safety_eval.py evals\run_research_eval.py evals\run_research_discovery_eval.py evals\run_research_capture_eval.py evals\run_price_eval.py evals\run_price_candidate_discovery_eval.py evals\run_price_capture_eval.py evals\run_capture_adapter_eval.py evals\run_cross_skill_schema_eval.py evals\run_adapter_matrix_eval.py evals\run_real_world_eval.py evals\run_privacy_eval.py evals\run_site_profile_eval.py evals\run_review_ui_eval.py evals\run_distribution_eval.py evals\run_batch_retry_eval.py evals\run_export_eval.py`
+- Release validation compile check: `python -m py_compile scripts\validation\validate_contract_drift.py scripts\validation\validate_plugin.py scripts\validation\validate_release.py scripts\inward_eyes\distribution.py scripts\plugin_package.py evals\run_distribution_eval.py`
+- Full compile gate: `python -m py_compile scripts\page_to_md_runner.py scripts\capture\playwright_mcp_capture.py scripts\capture\page_to_md_browser_runner.py scripts\capture\current_chrome_capture.py scripts\capture\current_chrome_page_to_md_runner.py scripts\research_discovery_runner.py scripts\research_capture_runner.py scripts\price_candidate_discovery_runner.py scripts\price_capture_runner.py scripts\adapter_matrix_runner.py scripts\site_profile_runner.py scripts\privacy_report_runner.py scripts\review_run.py scripts\run_database.py scripts\export_run.py scripts\plugin_package.py scripts\batch_runner.py scripts\markdown\render_page_md.py scripts\validation\validate_page_to_md.py scripts\validation\validate_page_capture.py scripts\validation\validate_json_schema.py scripts\validation\validate_contract_drift.py scripts\validation\validate_plugin.py scripts\validation\validate_release.py scripts\validation\classify_browser_action.py scripts\validation\validate_research_discovery.py scripts\validation\validate_browser_research.py scripts\validation\validate_price_candidate_discovery.py scripts\validation\validate_price_compare.py scripts\inward_eyes\__init__.py scripts\inward_eyes\capture.py scripts\inward_eyes\discovery.py scripts\inward_eyes\price_discovery.py scripts\inward_eyes\adapter_matrix.py scripts\inward_eyes\html_extract.py scripts\inward_eyes\io.py scripts\inward_eyes\paths.py scripts\inward_eyes\markdown.py scripts\inward_eyes\safety.py scripts\inward_eyes\validation.py scripts\inward_eyes\research.py scripts\inward_eyes\price.py scripts\inward_eyes\site_profiles.py scripts\inward_eyes\privacy.py scripts\inward_eyes\review.py scripts\inward_eyes\run_index.py scripts\inward_eyes\exporters.py scripts\inward_eyes\distribution.py scripts\browser_research_runner.py scripts\price_compare_runner.py evals\run_eval.py evals\run_safety_eval.py evals\run_research_eval.py evals\run_research_discovery_eval.py evals\run_research_capture_eval.py evals\run_price_eval.py evals\run_price_candidate_discovery_eval.py evals\run_price_capture_eval.py evals\run_capture_adapter_eval.py evals\run_cross_skill_schema_eval.py evals\run_adapter_matrix_eval.py evals\run_real_world_eval.py evals\run_privacy_eval.py evals\run_site_profile_eval.py evals\run_review_ui_eval.py evals\run_distribution_eval.py evals\run_batch_retry_eval.py evals\run_export_eval.py`
 - Eval runner: `python evals\run_eval.py`
 - Safety eval runner: `python evals\run_safety_eval.py`
 - Research eval runner: `python evals\run_research_eval.py`
@@ -60,14 +61,16 @@ The current release class is post-M12-M20 local operations hardening. CI covers 
 - Minimal schema validation: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>`
 - Nested schema validation: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path> --pointer /path/to/value`
 - CI workflow: `.github/workflows/ci.yml`
-- Plugin validation: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
+- Contract drift validation: `python scripts\validation\validate_contract_drift.py`
+- Portable plugin validation: `python scripts\validation\validate_plugin.py .`
+- Release input validation: `python scripts\validation\validate_release.py .`
 - Plugin packaging dry-run: `python scripts\plugin_package.py --output-dir dist`
 
 Do not claim any command passed unless it was actually run in the current session.
 
-The completed M12-M20 gate is summarized in `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md#acceptance-gates`.
+The completed M21 gate is summarized in `docs/planning/archive/m21-contract-integrity-hardening-closeout.md#acceptance-gates`.
 
-The minimal schema validator is a structural smoke gate only. It supports `type`, `required`, `properties`, `items`, `const`, `enum`, and `minLength`, and skips `$ref`, patterns, numeric bounds, string formats, `additionalProperties`, and conditional schemas. Workflow-specific validators are authoritative for release readiness.
+The standard-library schema validator is a structural smoke gate only. It supports local JSON Pointer `$ref`, composition keywords, core object/array/string/numeric constraints, and JSON Pointer selection. It rejects external refs and does not implement `format`, `if`/`then`/`else`, or the complete JSON Schema 2020-12 vocabulary. Workflow-specific validators remain authoritative for release readiness.
 
 ## Generated Artifact Validation Block
 
@@ -75,11 +78,15 @@ Run after the eval suite has generated `evals\.tmp\`.
 
 ```powershell
 python scripts\validation\validate_json_schema.py --schema schemas\page_to_md_metadata.schema.json --json evals\.tmp\page-to-md\eval-public-article\artifacts\metadata.json
+python scripts\validation\validate_json_schema.py --schema schemas\document_ast.schema.json --json evals\.tmp\page-to-md\eval-public-article\artifacts\document_ast.json
+python scripts\validation\validate_json_schema.py --schema schemas\source_record.schema.json --json evals\.tmp\page-to-md\eval-public-article\evidence\source_record.json
 python scripts\validation\validate_json_schema.py --schema schemas\page_capture.schema.json --json evals\.tmp\capture-adapter\valid-capture\capture\page_capture.json
 python scripts\validation\validate_json_schema.py --schema schemas\page_capture.schema.json --json evals\.tmp\capture-adapter\current-chrome-output\eval-current-chrome-logged-in\capture\page_capture.json
 python scripts\validation\validate_json_schema.py --schema schemas\run_manifest.schema.json --json evals\.tmp\page-to-md\eval-public-article\manifest.json
 python scripts\validation\validate_json_schema.py --schema schemas\validation_report.schema.json --json evals\.tmp\page-to-md\eval-public-article\validation\validation-report.json
 python scripts\validation\validate_json_schema.py --schema schemas\research_report.schema.json --json evals\.tmp\browser-research\eval-evidence-backed-research\artifacts\claims.json
+python scripts\validation\validate_json_schema.py --schema schemas\research_claim.schema.json --json evals\.tmp\browser-research\eval-evidence-backed-research\artifacts\claims.json --pointer /claims/0
+python scripts\validation\validate_json_schema.py --schema schemas\source_record.schema.json --json evals\.tmp\browser-research\eval-evidence-backed-research\evidence\source-001\source_record.json
 python scripts\validation\validate_json_schema.py --schema schemas\research_discovery_input.schema.json --json evals\.tmp\research-discovery\eval-bounded-three-sources\input.json
 python scripts\validation\validate_json_schema.py --schema schemas\discovery_log.schema.json --json evals\.tmp\research-discovery\eval-bounded-three-sources\artifacts\discovery-log.json
 python scripts\validation\validate_json_schema.py --schema schemas\research_report.schema.json --json evals\.tmp\research-capture\eval-two-source-supported\artifacts\claims.json
@@ -96,6 +103,7 @@ python scripts\validation\validate_json_schema.py --schema schemas\price_candida
 python scripts\validation\validate_json_schema.py --schema schemas\price_compare_run.schema.json --json evals\.tmp\price-candidate-discovery\eval-matching-candidates-within-cap\artifacts\prices.json
 python scripts\validation\validate_json_schema.py --schema schemas\price_compare_run.schema.json --json evals\.tmp\price-capture\eval-two-matching-product-urls\artifacts\prices.json
 python scripts\validation\validate_json_schema.py --schema schemas\price_record.schema.json --json evals\.tmp\price-compare\eval-product-quotes\artifacts\prices.json --pointer /quotes/0
+python scripts\validation\validate_json_schema.py --schema schemas\source_record.schema.json --json evals\.tmp\price-compare\eval-product-quotes\evidence\source-001\source_record.json
 python scripts\validation\validate_json_schema.py --schema schemas\price_record.schema.json --json evals\.tmp\price-candidate-discovery\eval-matching-candidates-within-cap\artifacts\prices.json --pointer /quotes/0
 python scripts\validation\validate_json_schema.py --schema schemas\price_record.schema.json --json evals\.tmp\price-capture\eval-two-matching-product-urls\artifacts\prices.json --pointer /quotes/0
 python scripts\validation\validate_json_schema.py --schema schemas\site_profiles.schema.json --json profiles\site_profiles.json
@@ -157,7 +165,7 @@ Cross-skill schema reuse must also prove that `page-to-md`, `browser-research`, 
 - `ManualReview`
 - `ValidationReport`
 
-The stable gate for this is `python evals\run_cross_skill_schema_eval.py`.
+The stable gate for this is `python evals\run_cross_skill_schema_eval.py`. Use `--generate` for a standalone invocation that must first regenerate the page, research, and price fixtures; CI runs those prerequisite evals separately and omits the flag.
 
 ### Script Unit Tests
 
@@ -210,6 +218,7 @@ Currently implemented:
 - M17 local package dry-run validation
 - M18-M19 sequential batch, rebuildable run index, and retry-plan generation
 - M20 JSON/CSV/Markdown run exports
+- M21 strict run/path identity, atomic finalization, capture schema/admission, HMAC continuation, wrapper ownership, privacy-retention, schema-drift, operations fail-closed, and reproducible package fixtures
 
 ### M2 Closeout Fixture Set
 

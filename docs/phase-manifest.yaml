@@ -1,11 +1,11 @@
 current:
   inward_eyes:
-    phase_id: m12_m20_post_rc_expansion
-    title: "M12-M20 post-RC local operations expansion"
+    phase_id: m21_contract_integrity_hardening
+    title: "M21 contract-integrity hardening"
     status: completed
-    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    canonical_spec: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
     agent_rules: docs/agents/current/browser-operator-agent-rules.md
-    release_gate: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md#acceptance-gates
+    release_gate: docs/planning/archive/m21-contract-integrity-hardening-closeout.md#acceptance-gates
     allowed_areas: []
     forbidden_areas:
       - new skills
@@ -231,7 +231,7 @@ phases:
       - evals/run_export_eval.py
     supersedes:
       - m18_m19_batch_retry_run_database
-    superseded_by: null
+    superseded_by: m21_contract_integrity_hardening
   m12_m20_post_rc_expansion:
     status: completed
     canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
@@ -241,4 +241,20 @@ phases:
       - .github/workflows/ci.yml
     supersedes:
       - m11_v1_hardening_release_candidate
+    superseded_by: m21_contract_integrity_hardening
+  m21_contract_integrity_hardening:
+    status: completed
+    canonical_spec: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+    closeout: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+    evidence:
+      - docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+      - .github/workflows/ci.yml
+      - evals/run_capture_adapter_eval.py
+      - evals/run_cross_skill_schema_eval.py
+      - evals/run_distribution_eval.py
+      - evals/run_batch_retry_eval.py
+      - evals/run_export_eval.py
+    supersedes:
+      - m20_exporters_extensions
+      - m12_m20_post_rc_expansion
     superseded_by: null

@@ -35,6 +35,21 @@ Chrome extension/current Chrome is suitable when logged-in browser state is requ
 
 Playwright/Chrome DevTools style tools are suitable when DOM, accessibility snapshots, screenshots, and repeatable navigation are needed.
 
+The local public-URL Playwright fallback is allowed only with a fail-closed
+network boundary:
+
+- resolve A and AAAA answers and reject the host if any answer is non-public;
+- pin Chromium's connection to an audited public address and disable proxy/QUIC bypasses;
+- re-run the public-address check for every dispatched request;
+- allow network requests only to the originally approved hostname;
+- reject cross-host redirects and revalidate the final URL;
+- block service workers, WebSocket, WebTransport, and WebRTC network bypasses;
+- disable speculative DNS/preconnect/background networking.
+
+Deterministic supplied-observation fixtures may skip live DNS only because they
+perform no browser network operation. They must still pass syntactic, literal-IP,
+and final-host checks.
+
 Browser Use is optional and should not be the first default dependency for this project because the initial scope is read-only, evidence-backed operation rather than stealth, CAPTCHA, proxy, or anti-bot workflows.
 
 Computer Use is a GUI fallback. It can affect the user's desktop state and must be tightly scoped.

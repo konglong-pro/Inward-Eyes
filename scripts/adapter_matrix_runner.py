@@ -11,6 +11,7 @@ if str(SCRIPT_ROOT) not in sys.path:
 
 from inward_eyes.adapter_matrix import build_adapter_matrix, render_adapter_matrix_markdown, validate_adapter_matrix
 from inward_eyes.io import utc_now, write_json, write_text
+from inward_eyes.paths import prepare_run_dir
 
 
 def _slug_timestamp(timestamp: str) -> str:
@@ -21,10 +22,9 @@ def run(args: argparse.Namespace) -> Path:
     root = Path(__file__).resolve().parents[1]
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-adapter-matrix"
-    output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
     matrix = build_adapter_matrix(root)
     report = validate_adapter_matrix(matrix)
+    run_dir = prepare_run_dir(args.output_root or "browser-operator-runs", run_id)
 
     write_json(run_dir / "input.json", {"root": str(root), "phase": "M12"})
     write_json(run_dir / "artifacts" / "adapter-matrix.json", matrix)

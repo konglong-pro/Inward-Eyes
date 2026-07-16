@@ -4,6 +4,8 @@ import csv
 import io
 from typing import Any
 
+from inward_eyes.paths import validate_source_id
+
 
 CLAIM_TYPES = {"fact", "inference", "unknown"}
 SUPPORT_TYPES = {"direct", "inferred"}
@@ -11,9 +13,8 @@ CLAIM_ROLES = {"key_claim", "background", "method_note", "unknown", "limitation"
 
 
 def source_dir_name(source_id: str) -> str:
-    if source_id.startswith("S") and source_id[1:].isdigit():
-        return f"source-{int(source_id[1:]):03d}"
-    return source_id.lower().replace("_", "-")
+    value = validate_source_id(source_id)
+    return f"source-{int(value[1:]):03d}"
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -33,7 +34,7 @@ def default_screenshot_policy(page_type: str, requires_login: bool) -> dict[str,
 
 
 def normalize_source(raw_source: dict[str, Any], index: int, accessed_at: str) -> dict[str, Any]:
-    source_id = str(raw_source.get("source_id") or f"S{index:03d}")
+    source_id = validate_source_id(str(raw_source.get("source_id") or f"S{index:03d}"))
     page_type = str(raw_source.get("page_type") or "unknown")
     requires_login = bool(raw_source.get("requires_login"))
     screenshot_policy = raw_source.get("screenshot_policy")

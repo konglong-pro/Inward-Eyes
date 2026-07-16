@@ -109,7 +109,6 @@
     "validation_status": {
       "type": "string",
       "enum": [
-        "pending",
         "passed",
         "failed"
       ]

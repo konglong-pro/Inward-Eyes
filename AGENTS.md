@@ -18,7 +18,7 @@ Inward Eyes is a Codex plugin for local deterministic and adapter-boundary evide
 
 ## Repo Map
 
-- `.codex-plugin/`: local plugin manifest. Current release class is post-M12-M20 local operations hardening, not marketplace publication.
+- `.codex-plugin/`: local plugin manifest. Current release class is post-M21 contract-integrity hardening, not marketplace publication.
 - `skills/`: Codex skills, one focused workflow per directory.
 - `profiles/`: advisory site profile catalog for extraction guidance, not browser permission.
 - `schemas/`: JSON schemas for run manifests, source records, metadata, claims, price records, and site profiles.
@@ -34,7 +34,7 @@ Inward Eyes is a Codex plugin for local deterministic and adapter-boundary evide
 
 ## Common Commands
 
-Run from `E:\Inward Eyes`.
+Run from the repository root.
 
 - Install: no project install step yet; first implementation uses Python standard library only.
 - Compile check: see `docs/testing.md`.
@@ -67,7 +67,9 @@ Run from `E:\Inward Eyes`.
 - Validate a JSON artifact against a schema: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path>`
 - Validate a nested JSON value against a schema: `python scripts\validation\validate_json_schema.py --schema <schema-path> --json <json-path> --pointer /path/to/value`
 - CI workflow: `.github/workflows/ci.yml`
-- Validate plugin: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
+- Validate plugin portably: `python scripts\validation\validate_plugin.py .`
+- Validate release inputs: `python scripts\validation\validate_release.py .`
+- Optional machine-local validator: `python <CODEX_HOME>\skills\.system\plugin-creator\scripts\validate_plugin.py .`
 - Build/package dry-run: `python scripts\plugin_package.py --output-dir dist`
 
 ## Task Routing
@@ -120,7 +122,7 @@ Run from `E:\Inward Eyes`.
 - `docs/contracts/site-profile-contract.md`: advisory site profile rules.
 - `docs/contracts/runtime-operations-contract.md`: review, batch, retry, run index, package, and export rules.
 - `docs/adr/0001-evidence-first-browser-workflows.md`: core product decision.
-- `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`: latest closeout summary and acceptance gates.
+- `docs/planning/archive/m21-contract-integrity-hardening-closeout.md`: latest closeout summary and acceptance gates.
 
 ## Done Means
 

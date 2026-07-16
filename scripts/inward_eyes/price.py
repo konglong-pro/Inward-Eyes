@@ -9,6 +9,8 @@ import struct
 import zlib
 from typing import Any
 
+from inward_eyes.paths import validate_source_id
+
 
 MIN_MATCH_CONFIDENCE = 0.8
 PRICE_KEYS = ("list_price", "sale_price", "coupon_price", "shipping_fee", "estimated_total")
@@ -34,9 +36,8 @@ def quote_evidence_name(quote: dict[str, Any]) -> str:
 
 
 def source_dir_name(source_id: str) -> str:
-    if source_id.startswith("S") and source_id[1:].isdigit():
-        return f"source-{int(source_id[1:]):03d}"
-    return source_id.lower().replace("_", "-")
+    value = validate_source_id(source_id)
+    return f"source-{int(value[1:]):03d}"
 
 
 def _number_or_none(value: Any) -> float | None:
@@ -180,7 +181,7 @@ def estimated_total_details(quote: dict[str, Any]) -> dict[str, Any]:
 
 
 def _default_screenshot_policy(raw_quote: dict[str, Any]) -> dict[str, Any]:
-    if raw_quote.get("screenshot_fixture") or raw_quote.get("screenshot"):
+    if raw_quote.get("screenshot"):
         return {"required": True, "reason": "product_page", "status": "required_and_present"}
     return {"required": True, "reason": "product_page", "status": "required_but_missing"}
 
@@ -193,7 +194,7 @@ def normalize_quote(
     candidate_by_id: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     quote_id = str(raw_quote.get("quote_id") or f"Q{index:03d}")
-    source_id = str(raw_quote.get("source_id") or f"S{index:03d}")
+    source_id = validate_source_id(str(raw_quote.get("source_id") or f"S{index:03d}"))
     candidate = candidate_by_id.get(str(raw_quote.get("candidate_id") or ""))
     identity = raw_quote.get("product_identity") if isinstance(raw_quote.get("product_identity"), dict) else {}
     if not identity and candidate:
@@ -234,7 +235,6 @@ def normalize_quote(
         "screenshot_policy": raw_quote.get("screenshot_policy")
         if isinstance(raw_quote.get("screenshot_policy"), dict)
         else _default_screenshot_policy(raw_quote),
-        "screenshot_fixture": bool(raw_quote.get("screenshot_fixture")),
         "warnings": _strings(raw_quote.get("warnings")),
         "notes": raw_quote.get("notes"),
         "anomalies": _strings(raw_quote.get("anomalies")),
@@ -302,6 +302,13 @@ def comparison_price(quote: dict[str, Any]) -> float | None:
 
 
 def is_quote_eligible(quote: dict[str, Any]) -> bool:
+    screenshot_policy = quote.get("screenshot_policy") if isinstance(quote.get("screenshot_policy"), dict) else {}
+    if (
+        not screenshot_policy.get("required")
+        or screenshot_policy.get("status") != "required_and_present"
+        or not quote.get("screenshot")
+    ):
+        return False
     if quote.get("match_confidence", 0) < MIN_MATCH_CONFIDENCE:
         return False
     if not quote.get("selected_specs_confirmed"):
@@ -570,15 +577,4 @@ def render_price_chart_png(model: dict[str, Any]) -> bytes:
         color = (48, 116, 92) if quote.get("eligible_for_lowest_price") else (165, 92, 74)
         _fill_rect(pixels, width, x, 306 - bar_height, x + bar_width, 306, color)
         x += bar_width + gap
-    return _png(width, height, pixels)
-
-
-def render_screenshot_fixture_png() -> bytes:
-    width, height = 320, 180
-    pixels = bytearray([245, 245, 242] * width * height)
-    _fill_rect(pixels, width, 0, 0, width, 28, (54, 82, 96))
-    _fill_rect(pixels, width, 24, 48, 140, 148, (210, 214, 208))
-    _fill_rect(pixels, width, 160, 52, 290, 68, (88, 88, 88))
-    _fill_rect(pixels, width, 160, 82, 245, 104, (48, 116, 92))
-    _fill_rect(pixels, width, 160, 122, 280, 142, (180, 180, 174))
     return _png(width, height, pixels)

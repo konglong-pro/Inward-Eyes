@@ -17,15 +17,18 @@ Define v1.0 semantics for validation errors, warnings, `run_status`, `validation
 | run_status | Meaning | validation_status | manual_review |
 | --- | --- | --- | --- |
 | `complete` | Required schema, consistency, evidence, screenshot, and workflow checks passed. | `passed` | `required=false`, `severity=info` |
-| `partial` | Useful artifacts exist, but warnings, fallback evidence, uncertainty, redaction, or review-only results prevent complete release. | `passed` unless a downstream validation report failed | `required=true`, `severity=warning` |
+| `partial` | Useful artifacts exist, but warnings, fallback evidence, uncertainty, redaction, or review-only results prevent complete release. | `passed` | `required=true`, `severity=warning` |
 | `failed` | Required artifacts, schema, evidence, source support, price eligibility, or workflow checks failed. | `failed` | `required=true`, `severity=blocking` |
-| `aborted_by_policy` | A Red action, unapproved Yellow action, forbidden privacy exposure, or scope violation blocked execution. | `failed` or `pending` if validation did not run | `required=true`, `severity=blocking` |
+| `aborted_by_policy` | A Red action, unapproved Yellow action, forbidden privacy exposure, or scope violation blocked execution. | `failed` | `required=true`, `severity=blocking` |
 
 `validation_status` is the machine validation state:
 
-- `pending`: validation has not run.
 - `passed`: required validators passed.
 - `failed`: required validators failed.
+
+`pending` may exist only as an in-memory implementation state. It is not part
+of the public canonical manifest schema. Final canonical manifests must use
+`passed` or `failed` and must never expose a transient pending state.
 
 `requires_manual_review` is a compatibility boolean. It must match `manual_review.required`.
 
@@ -199,6 +202,8 @@ Review examples:
 - `run_status=complete` requires empty `completion_blockers`, `validation_status=passed`, and `manual_review.required=false`.
 - `aborted_by_policy` must include a safety, privacy, or scope blocker in `completion_blockers` or manual-review reasons.
 - A workflow-specific validator may be stricter than the minimal schema validator.
+- Canonical manifest status is derived from the final validation report and must be checked in memory before a single atomic final write.
+- Missing, unreadable, malformed, non-object, or status-inconsistent manifests and validation reports fail closed in review, indexing, retry planning, batch aggregation, and export.
 
 ## Validation
 

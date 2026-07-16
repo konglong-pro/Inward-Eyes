@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from inward_eyes.discovery import validate_research_discovery_run
+from inward_eyes.paths import resolve_run_relative, validate_run_id, validate_source_id
 from inward_eyes.price_discovery import validate_price_candidate_discovery_run
 
 BOILERPLATE_PATTERNS = (
@@ -23,6 +24,25 @@ PRIVATE_DATA_WARNINGS = {
     "private_data_redacted",
     "private_data_detected",
 }
+MANIFEST_REQUIRED_FIELDS = {
+    "run_id",
+    "task",
+    "started_at",
+    "finished_at",
+    "operator",
+    "skill",
+    "inputs",
+    "artifacts",
+    "evidence",
+    "validation",
+    "warnings",
+    "requires_manual_review",
+    "run_status",
+    "validation_status",
+    "manual_review",
+    "completion_blockers",
+    "screenshot_policy",
+}
 
 
 def _field(data: dict[str, Any], path: str) -> Any:
@@ -35,9 +55,8 @@ def _field(data: dict[str, Any], path: str) -> Any:
 
 
 def _source_dir_name(source_id: str) -> str:
-    if source_id.startswith("S") and source_id[1:].isdigit():
-        return f"source-{int(source_id[1:]):03d}"
-    return source_id.lower().replace("_", "-")
+    value = validate_source_id(source_id)
+    return f"source-{int(value[1:]):03d}"
 
 
 def _manual_review(required: bool, severity: str, reasons: list[dict[str, str]]) -> dict[str, Any]:
@@ -88,7 +107,261 @@ def _sha256_file(path: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
-def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
+def _load_json_object(path: Path, run_dir: Path, errors: list[str]) -> dict[str, Any] | None:
+    try:
+        relative_path = path.relative_to(run_dir).as_posix()
+    except ValueError:
+        relative_path = str(path)
+    if not path.exists():
+        errors.append(f"missing_file:{relative_path}")
+        return None
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid_json:{relative_path}:{exc.__class__.__name__}")
+        return None
+    if not isinstance(loaded, dict):
+        errors.append(f"json_object_required:{relative_path}")
+        return None
+    if not loaded:
+        errors.append(f"json_object_empty:{relative_path}")
+        return None
+    return loaded
+
+
+def _load_run_manifest(run_dir: Path, errors: list[str]) -> dict[str, Any] | None:
+    try:
+        manifest_path = resolve_run_relative(run_dir, "manifest.json", must_exist=True)
+    except FileNotFoundError:
+        errors.append("missing_file:manifest.json")
+        return None
+    except ValueError:
+        errors.append("manifest.path_invalid:manifest.json")
+        return None
+    return _load_json_object(manifest_path, run_dir, errors)
+
+
+def canonical_manifest_shape_error(
+    manifest: dict[str, Any],
+    *,
+    expected_run_id: str | None = None,
+    expected_task: str | None = None,
+) -> str | None:
+    missing = sorted(MANIFEST_REQUIRED_FIELDS - manifest.keys())
+    if missing:
+        return f"required_field_missing:{missing[0]}"
+    for field in ("run_id", "task", "started_at", "finished_at", "operator", "skill"):
+        if not isinstance(manifest.get(field), str) or not manifest[field]:
+            return f"field_invalid:{field}"
+    try:
+        validate_run_id(manifest["run_id"])
+    except ValueError:
+        return "field_invalid:run_id"
+    if expected_run_id is not None and manifest["run_id"] != expected_run_id:
+        return "run_id_mismatch"
+    if expected_task is not None and manifest["task"] != expected_task:
+        return "task_mismatch"
+    if not isinstance(manifest.get("inputs"), dict):
+        return "field_invalid:inputs"
+    for field in ("artifacts", "evidence"):
+        value = manifest.get(field)
+        if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+            return f"field_invalid:{field}"
+        if any(
+            not isinstance(item.get("type"), str)
+            or not item["type"]
+            or not isinstance(item.get("path"), str)
+            or not item["path"]
+            for item in value
+        ):
+            return f"field_invalid:{field}"
+    for field in ("warnings", "completion_blockers"):
+        value = manifest.get(field)
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            return f"field_invalid:{field}"
+    if not isinstance(manifest.get("requires_manual_review"), bool):
+        return "field_invalid:requires_manual_review"
+    manual_review = manifest.get("manual_review")
+    if not isinstance(manual_review, dict):
+        return "field_invalid:manual_review"
+    if (
+        not isinstance(manual_review.get("required"), bool)
+        or manual_review.get("severity") not in {"info", "warning", "blocking"}
+        or not isinstance(manual_review.get("reasons"), list)
+        or not all(isinstance(reason, dict) for reason in manual_review.get("reasons", []))
+    ):
+        return "field_invalid:manual_review"
+    for reason in manual_review["reasons"]:
+        if (
+            not isinstance(reason.get("code"), str)
+            or not reason["code"]
+            or not isinstance(reason.get("message"), str)
+            or reason.get("severity") not in {"info", "warning", "blocking"}
+            or not isinstance(reason.get("artifact"), str)
+            or not reason["artifact"]
+        ):
+            return "field_invalid:manual_review.reasons"
+    validation = manifest.get("validation")
+    if not isinstance(validation, dict):
+        return "field_invalid:validation"
+    if (
+        not isinstance(validation.get("schema_valid"), bool)
+        or not isinstance(validation.get("warnings"), int)
+        or isinstance(validation.get("warnings"), bool)
+        or validation.get("warnings", -1) < 0
+        or not isinstance(validation.get("requires_manual_review"), bool)
+    ):
+        return "field_invalid:validation"
+    if validation["requires_manual_review"] != manifest["requires_manual_review"]:
+        return "field_invalid:validation.requires_manual_review"
+    if manifest.get("run_status") in {"complete", "partial"} and validation["schema_valid"] is not True:
+        return "field_invalid:validation.schema_valid"
+    if validation["warnings"] > len(manifest["warnings"]):
+        return "field_invalid:validation.warnings"
+    for key, value in validation.items():
+        if key.endswith("_path") and value is not None and (not isinstance(value, str) or not value):
+            return f"field_invalid:validation.{key}"
+    screenshot_policy = manifest.get("screenshot_policy")
+    if not isinstance(screenshot_policy, dict):
+        return "field_invalid:screenshot_policy"
+    if (
+        not isinstance(screenshot_policy.get("required"), bool)
+        or not isinstance(screenshot_policy.get("reason"), str)
+        or not screenshot_policy["reason"]
+        or screenshot_policy.get("status")
+        not in {
+            "required_and_present",
+            "required_but_missing",
+            "not_required",
+            "capture_failed",
+            "redacted",
+            "per_source_policy",
+            "per_quote_policy",
+        }
+    ):
+        return "field_invalid:screenshot_policy"
+    return None
+
+
+def validate_manifest_status(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    run_status = manifest.get("run_status")
+    validation_status = manifest.get("validation_status")
+    manual_review = manifest.get("manual_review") if isinstance(manifest.get("manual_review"), dict) else {}
+    review_required = bool(manual_review.get("required"))
+    compatibility_review = bool(manifest.get("requires_manual_review"))
+    blockers = manifest.get("completion_blockers")
+    if not isinstance(blockers, list):
+        errors.append("manifest.completion_blockers_not_list")
+        blockers = []
+    if compatibility_review != review_required:
+        errors.append("manifest.requires_manual_review_mismatch")
+    if run_status == "complete":
+        if validation_status != "passed":
+            errors.append("manifest.complete_validation_not_passed")
+        if review_required:
+            errors.append("manifest.complete_requires_manual_review")
+        if blockers:
+            errors.append("manifest.complete_has_blockers")
+        if manual_review.get("severity") != "info":
+            errors.append("manifest.complete_review_severity_invalid")
+    elif run_status == "partial":
+        if validation_status != "passed":
+            errors.append("manifest.partial_validation_not_passed")
+        if not review_required:
+            errors.append("manifest.partial_review_not_required")
+        if manual_review.get("severity") != "warning":
+            errors.append("manifest.partial_review_severity_invalid")
+        if blockers:
+            errors.append("manifest.partial_has_blockers")
+    elif run_status == "failed":
+        if validation_status != "failed":
+            errors.append("manifest.failed_validation_not_failed")
+        if not review_required or manual_review.get("severity") != "blocking":
+            errors.append("manifest.failed_review_not_blocking")
+        if not blockers:
+            errors.append("manifest.failed_blockers_missing")
+    elif run_status == "aborted_by_policy":
+        if validation_status != "failed":
+            errors.append("manifest.aborted_validation_status_invalid")
+        if not review_required or manual_review.get("severity") != "blocking":
+            errors.append("manifest.aborted_review_not_blocking")
+        if not blockers:
+            errors.append("manifest.aborted_blockers_missing")
+    else:
+        errors.append(f"manifest.run_status_invalid:{run_status}")
+    return errors
+
+
+def validate_manifest_paths(
+    run_dir: Path,
+    manifest: dict[str, Any],
+    *,
+    allow_missing_paths: set[str] | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    allowed_missing = allow_missing_paths or set()
+    for section in ("artifacts", "evidence"):
+        records = manifest.get(section, [])
+        if not isinstance(records, list):
+            errors.append(f"manifest.{section}_not_list")
+            continue
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                errors.append(f"manifest.{section}[{index}]_not_object")
+                continue
+            raw_path = record.get("path")
+            if not raw_path:
+                errors.append(f"manifest.{section}[{index}].path_missing")
+                continue
+            try:
+                candidate = resolve_run_relative(run_dir, str(raw_path))
+            except ValueError:
+                errors.append(f"manifest.{section}[{index}].path_invalid:{raw_path}")
+                continue
+            if not candidate.exists() and str(raw_path) in allowed_missing:
+                continue
+            if not candidate.exists():
+                errors.append(f"manifest.{section}[{index}].path_missing_on_disk:{raw_path}")
+                continue
+            if not candidate.is_file():
+                errors.append(f"manifest.{section}[{index}].path_not_file:{raw_path}")
+                continue
+            if section == "evidence" and record.get("type") == "screenshot":
+                from inward_eyes.capture import screenshot_file_is_valid
+
+                if not screenshot_file_is_valid(candidate):
+                    errors.append(f"manifest.evidence[{index}].screenshot_invalid_file:{raw_path}")
+                expected_sha = record.get("sha256")
+                if not expected_sha:
+                    errors.append(f"manifest.evidence[{index}].sha256_missing:{raw_path}")
+                elif expected_sha != _sha256_file(candidate):
+                    errors.append(f"manifest.evidence[{index}].sha256_mismatch:{raw_path}")
+    validation = manifest.get("validation") if isinstance(manifest.get("validation"), dict) else {}
+    for key, raw_path in validation.items():
+        if not key.endswith("_path") or not raw_path:
+            continue
+        try:
+            candidate = resolve_run_relative(run_dir, str(raw_path))
+        except ValueError:
+            errors.append(f"manifest.validation.{key}_invalid:{raw_path}")
+            continue
+        if not candidate.exists() and str(raw_path) in allowed_missing:
+            continue
+        if not candidate.exists():
+            errors.append(f"manifest.validation.{key}_missing_on_disk:{raw_path}")
+        elif not candidate.is_file():
+            errors.append(f"manifest.validation.{key}_not_file:{raw_path}")
+    return errors
+
+
+def validate_page_to_md_run(
+    run_dir: Path,
+    manifest_override: dict[str, Any] | None = None,
+    *,
+    pending_manifest_paths: set[str] | None = None,
+    skip_manifest_validation: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     manual_review = False
@@ -99,17 +372,8 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
     manifest_path = run_dir / "manifest.json"
     source_record_path = run_dir / "evidence" / "source_record.json"
 
-    import json
-
     def load(path: Path) -> dict[str, Any] | None:
-        if not path.exists():
-            errors.append(f"missing_file:{path.relative_to(run_dir).as_posix()}")
-            return None
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            errors.append(f"invalid_json:{path.relative_to(run_dir).as_posix()}:{exc}")
-            return None
+        return _load_json_object(path, run_dir, errors)
 
     metadata = load(metadata_path)
     ast = load(ast_path)
@@ -121,7 +385,14 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
     else:
         markdown = markdown_path.read_text(encoding="utf-8")
 
-    manifest = load(manifest_path)
+    manifest = None
+    if not skip_manifest_validation:
+        manifest = manifest_override if manifest_override is not None else _load_run_manifest(run_dir, errors)
+    manifest_screenshots = {
+        str(record.get("path")): record
+        for record in (manifest.get("evidence", []) if isinstance(manifest, dict) else [])
+        if isinstance(record, dict) and record.get("type") == "screenshot" and record.get("path")
+    }
 
     if metadata:
         if not _field(metadata, "source.url"):
@@ -139,7 +410,30 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
         if not _field(metadata, "extraction.method"):
             errors.append("metadata.extraction.method_missing")
         screenshot_policy = _field(metadata, "extraction.screenshot_policy") or {}
-        screenshot_assets = [asset for asset in metadata.get("assets", []) if asset.get("type") == "screenshot"]
+        screenshot_assets = [
+            asset
+            for asset in metadata.get("assets", [])
+            if isinstance(asset, dict) and asset.get("type") == "screenshot"
+        ]
+        valid_screenshot_paths: set[str] = set()
+        from inward_eyes.capture import screenshot_file_is_valid
+
+        for index, asset in enumerate(screenshot_assets):
+            raw_path = str(asset.get("path") or "")
+            if not raw_path:
+                errors.append(f"metadata.assets[{index}].screenshot_path_missing")
+                continue
+            try:
+                screenshot_path = resolve_run_relative(run_dir, raw_path)
+            except ValueError:
+                errors.append(f"metadata.assets[{index}].screenshot_path_invalid:{raw_path}")
+                continue
+            if not screenshot_file_is_valid(screenshot_path):
+                errors.append(f"metadata.assets[{index}].screenshot_invalid_file:{raw_path}")
+                continue
+            valid_screenshot_paths.add(raw_path)
+            if not skip_manifest_validation and manifest is not None and raw_path not in manifest_screenshots:
+                errors.append(f"metadata.assets[{index}].screenshot_manifest_evidence_missing:{raw_path}")
         metadata_warnings = _field(metadata, "extraction.warnings") or []
         privacy = metadata.get("privacy") if isinstance(metadata.get("privacy"), dict) else {}
         if privacy.get("contains_private_data") or PRIVATE_DATA_WARNINGS.intersection(set(metadata_warnings)):
@@ -151,6 +445,9 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
             if status == "required_and_present":
                 if not screenshot_assets:
                     errors.append("screenshot_required_and_present_but_asset_missing")
+                    manual_review = True
+                elif not valid_screenshot_paths:
+                    errors.append("screenshot_required_and_present_but_valid_asset_missing")
                     manual_review = True
             elif status == "required_but_missing":
                 errors.append("screenshot_required_but_missing")
@@ -193,32 +490,36 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
     if metadata and source_record:
         if metadata["source"].get("url") != source_record.get("url"):
             errors.append("source_record.url_mismatch")
+        metadata_policy = _field(metadata, "extraction.screenshot_policy") or {}
+        source_policy = source_record.get("screenshot_policy") if isinstance(source_record.get("screenshot_policy"), dict) else {}
+        if source_policy != metadata_policy:
+            errors.append("source_record.screenshot_policy_mismatch")
+        metadata_screenshot_paths = {
+            str(asset.get("path"))
+            for asset in metadata.get("assets", [])
+            if isinstance(asset, dict) and asset.get("type") == "screenshot" and asset.get("path")
+        }
+        source_screenshot = _field(source_record, "evidence.screenshot")
+        if metadata_policy.get("status") == "required_and_present":
+            if not source_screenshot:
+                errors.append("source_record.screenshot_path_missing")
+            elif str(source_screenshot) not in metadata_screenshot_paths:
+                errors.append("source_record.screenshot_path_mismatch")
+            elif not skip_manifest_validation and manifest is not None and str(source_screenshot) not in manifest_screenshots:
+                errors.append("source_record.screenshot_manifest_evidence_missing")
+        elif source_screenshot and str(source_screenshot) not in metadata_screenshot_paths:
+            errors.append("source_record.screenshot_path_mismatch")
 
-    if manifest:
-        for section in ("artifacts", "evidence"):
-            records = manifest.get(section, [])
-            if not isinstance(records, list):
-                errors.append(f"manifest.{section}_not_list")
-                continue
-            for index, record in enumerate(records):
-                if not isinstance(record, dict):
-                    errors.append(f"manifest.{section}[{index}]_not_object")
-                    continue
-                raw_path = record.get("path")
-                if not raw_path:
-                    errors.append(f"manifest.{section}[{index}].path_missing")
-                    continue
-                candidate_path = run_dir / raw_path
-                if not candidate_path.exists():
-                    errors.append(f"manifest.{section}[{index}].path_missing_on_disk:{raw_path}")
-                    continue
-                if section == "evidence" and record.get("type") == "screenshot":
-                    expected_sha = record.get("sha256")
-                    if not expected_sha:
-                        errors.append(f"manifest.evidence[{index}].sha256_missing:{raw_path}")
-                    elif expected_sha != _sha256_file(candidate_path):
-                        errors.append(f"manifest.evidence[{index}].sha256_mismatch:{raw_path}")
-
+    if not skip_manifest_validation and manifest is not None:
+        shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=run_dir.name,
+            expected_task="page-to-md",
+        )
+        if shape_error:
+            errors.append(f"manifest.shape_invalid:{shape_error}")
+        errors.extend(validate_manifest_paths(run_dir, manifest, allow_missing_paths=pending_manifest_paths))
+        errors.extend(validate_manifest_status(manifest))
         manifest_source = _field(manifest, "inputs.source_url")
         if metadata and manifest_source and manifest_source != metadata["source"].get("url"):
             errors.append("manifest.inputs.source_url_mismatch")
@@ -238,7 +539,13 @@ def validate_page_to_md_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
+def validate_browser_research_run(
+    run_dir: Path,
+    manifest_override: dict[str, Any] | None = None,
+    *,
+    pending_manifest_paths: set[str] | None = None,
+    skip_manifest_validation: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     manual_review = False
@@ -251,17 +558,12 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
     manifest_path = run_dir / "manifest.json"
 
     def load(path: Path) -> dict[str, Any] | None:
-        if not path.exists():
-            errors.append(f"missing_file:{path.relative_to(run_dir).as_posix()}")
-            return None
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            errors.append(f"invalid_json:{path.relative_to(run_dir).as_posix()}:{exc}")
-            return None
+        return _load_json_object(path, run_dir, errors)
 
     claims_doc = load(claims_path)
-    manifest = load(manifest_path)
+    manifest = None
+    if not skip_manifest_validation:
+        manifest = manifest_override if manifest_override is not None else _load_run_manifest(run_dir, errors)
 
     if not report_path.exists():
         errors.append("missing_file:artifacts/report.md")
@@ -272,7 +574,9 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
     if not source_notes_path.exists():
         errors.append("missing_file:artifacts/source_notes.md")
 
-    if not missing_sources_path.exists():
+    if not missing_sources_path.exists() and not (
+        pending_manifest_paths and "validation/missing-sources.md" in pending_manifest_paths
+    ):
         errors.append("missing_file:validation/missing-sources.md")
 
     csv_source_ids: set[str] = set()
@@ -300,6 +604,11 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
 
     source_ids: set[str] = set()
     source_by_id: dict[str, dict[str, Any]] = {}
+    manifest_screenshots = {
+        str(record.get("path")): record
+        for record in (manifest.get("evidence", []) if isinstance(manifest, dict) else [])
+        if isinstance(record, dict) and record.get("type") == "screenshot" and record.get("path")
+    }
     for source in sources:
         if not isinstance(source, dict):
             errors.append("source.not_object")
@@ -325,12 +634,21 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             warnings.append(f"source_independence_{independence_status}:{source_id}")
             manual_review = True
 
-        evidence_path = source.get("evidence_path") or f"evidence/{_source_dir_name(source_id)}/source_record.json"
-        expected_prefix = f"evidence/{_source_dir_name(source_id)}/"
+        try:
+            source_dir = _source_dir_name(source_id)
+        except ValueError:
+            errors.append(f"source.source_id_invalid:{source_id}")
+            continue
+        evidence_path = source.get("evidence_path") or f"evidence/{source_dir}/source_record.json"
+        expected_prefix = f"evidence/{source_dir}/"
         if not str(evidence_path).replace("\\", "/").startswith(expected_prefix):
             errors.append(f"source.evidence_dir_mismatch:{source_id}:{evidence_path}")
-        source_record_path = run_dir / str(evidence_path)
-        source_record = load(source_record_path)
+        try:
+            source_record_path = resolve_run_relative(run_dir, str(evidence_path))
+        except ValueError:
+            errors.append(f"source.evidence_path_invalid:{source_id}:{evidence_path}")
+            source_record_path = None
+        source_record = load(source_record_path) if source_record_path is not None else None
         if source_record:
             if source_record.get("source_id") != source_id:
                 errors.append(f"source_record.id_mismatch:{source_id}")
@@ -345,8 +663,16 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
                 screenshot = _field(source, "evidence.screenshot")
                 if not screenshot:
                     errors.append(f"screenshot.required_present_path_missing:{source_id}")
-                elif not (run_dir / str(screenshot)).exists():
-                    errors.append(f"screenshot.required_present_missing_on_disk:{source_id}")
+                else:
+                    try:
+                        screenshot_path = resolve_run_relative(run_dir, str(screenshot))
+                    except ValueError:
+                        errors.append(f"screenshot.required_present_path_invalid:{source_id}")
+                    else:
+                        if not screenshot_path.exists():
+                            errors.append(f"screenshot.required_present_missing_on_disk:{source_id}")
+                    if not skip_manifest_validation and manifest is not None and str(screenshot) not in manifest_screenshots:
+                        errors.append(f"screenshot.manifest_evidence_missing:{source_id}")
             elif status == "required_but_missing":
                 errors.append(f"screenshot.required_but_missing:{source_id}")
             elif status in {"capture_failed", "redacted"}:
@@ -486,29 +812,24 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
             if f"[{source_id}]" not in report_markdown:
                 errors.append(f"report.source_marker_missing:{claim_id}:{source_id}")
 
-    if manifest:
-        for section in ("artifacts", "evidence"):
-            records = manifest.get(section, [])
-            if not isinstance(records, list):
-                errors.append(f"manifest.{section}_not_list")
-                continue
-            for index, record in enumerate(records):
-                if not isinstance(record, dict):
-                    errors.append(f"manifest.{section}[{index}]_not_object")
-                    continue
-                raw_path = record.get("path")
-                if not raw_path:
-                    errors.append(f"manifest.{section}[{index}].path_missing")
-                    continue
-                if not (run_dir / raw_path).exists():
-                    errors.append(f"manifest.{section}[{index}].path_missing_on_disk:{raw_path}")
-        for key in ("report_path", "missing_sources_path"):
-            raw_path = _field(manifest, f"validation.{key}")
-            if raw_path and not (run_dir / str(raw_path)).exists():
-                errors.append(f"manifest.validation.{key}_missing_on_disk:{raw_path}")
+    if not skip_manifest_validation and manifest is not None:
+        shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=run_dir.name,
+            expected_task="browser-research",
+        )
+        if shape_error:
+            errors.append(f"manifest.shape_invalid:{shape_error}")
+        errors.extend(validate_manifest_paths(run_dir, manifest, allow_missing_paths=pending_manifest_paths))
+        errors.extend(validate_manifest_status(manifest))
 
     if (run_dir / "artifacts" / "discovery-log.json").exists():
-        discovery_report = validate_research_discovery_run(run_dir)
+        discovery_report = validate_research_discovery_run(
+            run_dir,
+            manifest_override=manifest,
+            pending_manifest_paths=pending_manifest_paths,
+            skip_manifest_validation=skip_manifest_validation,
+        )
         errors.extend(discovery_report.get("errors", []))
         warnings.extend(discovery_report.get("warnings", []))
         manual_review = manual_review or bool(discovery_report.get("requires_manual_review"))
@@ -534,7 +855,13 @@ def validate_browser_research_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
+def validate_price_compare_run(
+    run_dir: Path,
+    manifest_override: dict[str, Any] | None = None,
+    *,
+    pending_manifest_paths: set[str] | None = None,
+    skip_manifest_validation: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     manual_review = False
@@ -547,17 +874,12 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
     manifest_path = run_dir / "manifest.json"
 
     def load(path: Path) -> dict[str, Any] | None:
-        if not path.exists():
-            errors.append(f"missing_file:{path.relative_to(run_dir).as_posix()}")
-            return None
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            errors.append(f"invalid_json:{path.relative_to(run_dir).as_posix()}:{exc}")
-            return None
+        return _load_json_object(path, run_dir, errors)
 
     prices_doc = load(prices_path)
-    manifest = load(manifest_path)
+    manifest = None
+    if not skip_manifest_validation:
+        manifest = manifest_override if manifest_override is not None else _load_run_manifest(run_dir, errors)
 
     if not report_path.exists():
         errors.append("missing_file:artifacts/price-report.md")
@@ -627,6 +949,16 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
     if not isinstance(comparison, dict):
         errors.append("prices.comparison_not_object")
         comparison = {}
+    explicit_failed_evidence = bool(
+        isinstance(manifest, dict)
+        and manifest.get("run_status") in {"failed", "aborted_by_policy"}
+        and any(
+            isinstance(item, dict) and item.get("type") == "page_capture"
+            for item in manifest.get("evidence", [])
+        )
+    )
+    if not quotes and not explicit_failed_evidence:
+        errors.append("prices.quotes_empty")
 
     quote_ids: set[str] = set()
     eligible_quote_ids: list[str] = []
@@ -636,6 +968,11 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         f"{anomaly.get('record_id')}:{anomaly.get('anomaly')}"
         for anomaly in anomalies
         if isinstance(anomaly, dict)
+    }
+    manifest_screenshots = {
+        str(record.get("path")): record
+        for record in (manifest.get("evidence", []) if isinstance(manifest, dict) else [])
+        if isinstance(record, dict) and record.get("type") == "screenshot" and record.get("path")
     }
 
     for candidate in candidates:
@@ -669,6 +1006,10 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
             errors.append(f"quote.source_id_missing:{quote_id}")
         else:
             source_ids.add(source_id)
+            try:
+                validate_source_id(source_id)
+            except ValueError:
+                errors.append(f"quote.source_id_invalid:{quote_id}:{source_id}")
 
         for field_name in ("url", "platform", "region", "currency", "seller", "condition", "stock", "accessed_at"):
             if not quote.get(field_name):
@@ -782,8 +1123,16 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         if status == "required_and_present":
             if not screenshot:
                 errors.append(f"quote.{quote_id}.screenshot_path_missing")
-            elif not (run_dir / str(screenshot)).exists():
-                errors.append(f"quote.{quote_id}.screenshot_missing_on_disk:{screenshot}")
+            else:
+                try:
+                    screenshot_path = resolve_run_relative(run_dir, str(screenshot))
+                except ValueError:
+                    errors.append(f"quote.{quote_id}.screenshot_path_invalid:{screenshot}")
+                else:
+                    if not screenshot_path.exists():
+                        errors.append(f"quote.{quote_id}.screenshot_missing_on_disk:{screenshot}")
+                if not skip_manifest_validation and manifest is not None and str(screenshot) not in manifest_screenshots:
+                    errors.append(f"quote.{quote_id}.screenshot_manifest_evidence_missing:{screenshot}")
         elif status == "required_but_missing":
             errors.append(f"quote.{quote_id}.screenshot_required_but_missing")
             manual_review = True
@@ -799,10 +1148,19 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         if not source_record_path:
             errors.append(f"quote.{quote_id}.source_record_path_missing")
         else:
-            expected_prefix = f"evidence/{_source_dir_name(source_id)}/"
-            if source_id and not str(source_record_path).replace("\\", "/").startswith(expected_prefix):
+            try:
+                source_dir = _source_dir_name(source_id)
+            except ValueError:
+                source_dir = None
+            expected_prefix = f"evidence/{source_dir}/" if source_dir else ""
+            if source_dir and not str(source_record_path).startswith(expected_prefix):
                 errors.append(f"quote.{quote_id}.source_record_dir_mismatch:{source_record_path}")
-            source_record = load(run_dir / str(source_record_path))
+            try:
+                resolved_source_record = resolve_run_relative(run_dir, str(source_record_path))
+            except ValueError:
+                errors.append(f"quote.{quote_id}.source_record_path_invalid:{source_record_path}")
+                resolved_source_record = None
+            source_record = load(resolved_source_record) if resolved_source_record is not None else None
             if source_record:
                 if source_record.get("source_id") != source_id:
                     errors.append(f"source_record.id_mismatch:{quote_id}")
@@ -827,28 +1185,24 @@ def validate_price_compare_run(run_dir: Path) -> dict[str, Any]:
         manual_review = True
         manual_review_codes.append("no_eligible_quotes")
 
-    if manifest:
-        for section in ("artifacts", "evidence"):
-            records = manifest.get(section, [])
-            if not isinstance(records, list):
-                errors.append(f"manifest.{section}_not_list")
-                continue
-            for index, record in enumerate(records):
-                if not isinstance(record, dict):
-                    errors.append(f"manifest.{section}[{index}]_not_object")
-                    continue
-                raw_path = record.get("path")
-                if not raw_path:
-                    errors.append(f"manifest.{section}[{index}].path_missing")
-                    continue
-                if not (run_dir / raw_path).exists():
-                    errors.append(f"manifest.{section}[{index}].path_missing_on_disk:{raw_path}")
-        raw_path = _field(manifest, "validation.report_path")
-        if raw_path and not (run_dir / str(raw_path)).exists():
-            errors.append(f"manifest.validation.report_path_missing_on_disk:{raw_path}")
+    if not skip_manifest_validation and manifest is not None:
+        shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=run_dir.name,
+            expected_task="price-compare",
+        )
+        if shape_error:
+            errors.append(f"manifest.shape_invalid:{shape_error}")
+        errors.extend(validate_manifest_paths(run_dir, manifest, allow_missing_paths=pending_manifest_paths))
+        errors.extend(validate_manifest_status(manifest))
 
     if (run_dir / "artifacts" / "candidates.json").exists():
-        candidate_report = validate_price_candidate_discovery_run(run_dir)
+        candidate_report = validate_price_candidate_discovery_run(
+            run_dir,
+            manifest_override=manifest,
+            pending_manifest_paths=pending_manifest_paths,
+            skip_manifest_validation=skip_manifest_validation,
+        )
         errors.extend(candidate_report.get("errors", []))
         warnings.extend(candidate_report.get("warnings", []))
         manual_review = manual_review or bool(candidate_report.get("requires_manual_review"))

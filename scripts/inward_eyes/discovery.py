@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from inward_eyes.research import source_dir_name
+from inward_eyes.paths import resolve_run_relative
 
 DEFAULT_MAX_SOURCES = 5
 HARD_MAX_SOURCES = 20
@@ -353,18 +354,43 @@ def _status_fields(errors: list[str], warnings: list[str], manual_review: bool) 
 
 
 def _load_json(path: Path, errors: list[str], run_dir: Path) -> dict[str, Any] | None:
+    relative_path = path.relative_to(run_dir).as_posix()
     if not path.exists():
-        errors.append(f"missing_file:{path.relative_to(run_dir).as_posix()}")
+        errors.append(f"missing_file:{relative_path}")
         return None
     try:
         loaded = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        errors.append(f"invalid_json:{path.relative_to(run_dir).as_posix()}:{exc}")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid_json:{relative_path}:{exc.__class__.__name__}")
         return None
-    return loaded if isinstance(loaded, dict) else None
+    if not isinstance(loaded, dict):
+        errors.append(f"json_object_required:{relative_path}")
+        return None
+    if not loaded:
+        errors.append(f"json_object_empty:{relative_path}")
+        return None
+    return loaded
 
 
-def validate_research_discovery_run(run_dir: Path) -> dict[str, Any]:
+def _load_run_manifest(run_dir: Path, errors: list[str]) -> dict[str, Any] | None:
+    try:
+        manifest_path = resolve_run_relative(run_dir, "manifest.json", must_exist=True)
+    except FileNotFoundError:
+        errors.append("missing_file:manifest.json")
+        return None
+    except ValueError:
+        errors.append("manifest.path_invalid:manifest.json")
+        return None
+    return _load_json(manifest_path, errors, run_dir)
+
+
+def validate_research_discovery_run(
+    run_dir: Path,
+    manifest_override: dict[str, Any] | None = None,
+    *,
+    pending_manifest_paths: set[str] | None = None,
+    skip_manifest_validation: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     manual_review = False
@@ -376,7 +402,9 @@ def validate_research_discovery_run(run_dir: Path) -> dict[str, Any]:
 
     log = _load_json(log_path, errors, run_dir) or {}
     claims_doc = _load_json(claims_path, errors, run_dir) or {}
-    manifest = _load_json(manifest_path, errors, run_dir) or {}
+    manifest: dict[str, Any] | None = None
+    if not skip_manifest_validation:
+        manifest = manifest_override if manifest_override is not None else _load_run_manifest(run_dir, errors)
 
     if not log_md_path.exists():
         errors.append("missing_file:artifacts/discovery-log.md")
@@ -453,8 +481,14 @@ def validate_research_discovery_run(run_dir: Path) -> dict[str, Any]:
     for source_id, selected in selected_by_id.items():
         if source_id not in claims_source_by_id:
             errors.append(f"discovery.selected_source_missing_from_claims:{source_id}")
-        source_record_path = run_dir / "evidence" / source_dir_name(source_id) / "source_record.json"
-        source_record = _load_json(source_record_path, errors, run_dir)
+        try:
+            source_directory = source_dir_name(source_id)
+        except ValueError:
+            errors.append(f"discovery.selected_source_id_invalid:{source_id}")
+            source_record = None
+        else:
+            source_record_path = run_dir / "evidence" / source_directory / "source_record.json"
+            source_record = _load_json(source_record_path, errors, run_dir)
         if source_record:
             if source_record.get("source_id") != source_id:
                 errors.append(f"discovery.source_record_id_mismatch:{source_id}")
@@ -463,19 +497,35 @@ def validate_research_discovery_run(run_dir: Path) -> dict[str, Any]:
         if not selected.get("selection_rationale"):
             errors.append(f"discovery.selected_source_rationale_missing:{source_id}")
 
-    manifest_paths = {
-        item.get("path")
-        for section in ("artifacts", "evidence")
-        for item in (manifest.get(section) or [])
-        if isinstance(item, dict)
-    }
-    for required_path in (
-        "artifacts/discovery-log.json",
-        "artifacts/discovery-log.md",
-        "validation/discovery-validation-report.json",
-    ):
-        if required_path not in manifest_paths and required_path != "validation/discovery-validation-report.json":
-            errors.append(f"discovery.manifest_path_missing:{required_path}")
+    if not skip_manifest_validation and manifest is not None:
+        from inward_eyes.validation import (
+            canonical_manifest_shape_error,
+            validate_manifest_paths,
+            validate_manifest_status,
+        )
+
+        shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=run_dir.name,
+            expected_task="browser-research",
+        )
+        if shape_error:
+            errors.append(f"manifest.shape_invalid:{shape_error}")
+        errors.extend(validate_manifest_paths(run_dir, manifest, allow_missing_paths=pending_manifest_paths))
+        errors.extend(validate_manifest_status(manifest))
+        manifest_paths = {
+            item.get("path")
+            for section in ("artifacts", "evidence")
+            for item in (manifest.get(section) or [])
+            if isinstance(item, dict)
+        }
+        for required_path in (
+            "artifacts/discovery-log.json",
+            "artifacts/discovery-log.md",
+            "validation/discovery-validation-report.json",
+        ):
+            if required_path not in manifest_paths and required_path != "validation/discovery-validation-report.json":
+                errors.append(f"discovery.manifest_path_missing:{required_path}")
 
     return {
         **_status_fields(errors, warnings, manual_review),

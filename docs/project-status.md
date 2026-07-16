@@ -1,16 +1,16 @@
 # Project Status
 
-Last updated: 2026-06-16
+Last updated: 2026-07-16
 
 ## Summary
 
-Inward Eyes is complete through M20 as a repository-contained Codex plugin for deterministic evidence workflows and local operational tooling.
+Inward Eyes is complete through M21 as a repository-contained Codex plugin for deterministic evidence workflows and local operational tooling.
 
 Current active implementation phase: none.
 
-Current release class: post-M12-M20 local operations hardening. The repository includes browser-backed workflow boundaries, v1 contract hardening, adapter matrix reporting, deterministic replay evals, privacy scans, advisory site profiles, CLI review, local package dry-run, sequential batch/retry/indexing, and view-only exporters.
+Current release class: post-M21 contract-integrity hardening. The repository includes browser-backed workflow boundaries, v1 contract hardening, adapter matrix reporting, deterministic replay evals, privacy scans, advisory site profiles, CLI review, local package dry-run, sequential batch/retry/indexing, view-only exporters, and integrity hardening for run identity, capture admission, authenticated continuation, atomic evidence, validation, and distribution.
 
-The local Codex plugin package version remains `0.2.0`. Repository phase/version semantics document the implementation baseline; marketplace publication and release tagging are separate work.
+The base package version remains `0.2.0`. The current local manifest uses build metadata `0.2.0+codex.20260710093025` as a Codex cachebuster; marketplace publication and tagged release versioning remain separate work.
 
 ## Frozen Behavior
 
@@ -50,8 +50,9 @@ The local Codex plugin package version remains `0.2.0`. Repository phase/version
 - M17: local distribution package dry-run.
 - M18-M19: batch, retry planning, and rebuildable run index.
 - M20: view-only exporters and extension boundary.
+- M21: contract-integrity hardening.
 
-Latest closeout: `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`.
+Latest closeout: `docs/planning/archive/m21-contract-integrity-hardening-closeout.md`.
 
 Closeouts:
 
@@ -65,6 +66,7 @@ Closeouts:
 - M10: `docs/planning/archive/m10-small-scope-discovery-closeout.md`
 - M11: `docs/planning/archive/m11-v1-release-risk-report.md`
 - M12-M20: `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`
+- M21: `docs/planning/archive/m21-contract-integrity-hardening-closeout.md`
 
 ## Still Out of Scope
 

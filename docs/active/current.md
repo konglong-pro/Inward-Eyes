@@ -1,6 +1,6 @@
 # Current Active Work
 
-Last updated: 2026-06-16
+Last updated: 2026-07-16
 Source of current phase: `docs/phase-manifest.yaml`
 
 ## Current State
@@ -8,11 +8,12 @@ Source of current phase: `docs/phase-manifest.yaml`
 - Shipped/frozen baseline: M0-M10 repository-contained evidence workflows.
 - Completed hardening: M11 v1.0 release-candidate contracts.
 - Completed local operations expansion: M12-M20.
+- Completed contract-integrity hardening: M21.
 - Active implementation phase: none.
-- Current release class: post-M12-M20 local operations hardening on top of the frozen browser-backed workflow baseline.
+- Current release class: post-M21 contract-integrity hardening on top of the frozen browser-backed workflow baseline.
 - Not shipped yet: marketplace publication and live-network quality certification.
 
-M12-M20 added deterministic local operations around the existing workflows. They did not add new Codex skills, new browser backends, broad crawling, marketplace monitoring, unrestricted logged-in browsing, purchasing, or account mutation.
+M12-M20 added deterministic local operations around the existing workflows. M21 hardened run identity, atomic evidence, capture admission, authenticated continuation, privacy retention, validation, operations, packaging, and CI. It did not add new Codex skills, new browser backends, broad crawling, marketplace monitoring, unrestricted logged-in browsing, purchasing, or account mutation.
 
 ## Completed Baseline
 
@@ -28,8 +29,9 @@ M12-M20 added deterministic local operations around the existing workflows. They
 - M17: local package dry-run.
 - M18-M19: sequential batch, retry planning, and rebuildable run index.
 - M20: JSON/CSV/Markdown run exporters.
+- M21: contract-integrity hardening across capture, evidence, continuation, validation, operations, distribution, and CI.
 
-Latest closeout: `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`.
+Latest closeout: `docs/planning/archive/m21-contract-integrity-hardening-closeout.md`.
 
 ## Required Reading for New Work
 
@@ -60,7 +62,7 @@ Latest closeout: `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`.
 
 ## Current Gates
 
-Use `docs/testing.md` and `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md#acceptance-gates`.
+Use `docs/testing.md` and `docs/planning/archive/m21-contract-integrity-hardening-closeout.md#acceptance-gates`.
 
 Required gate families:
 

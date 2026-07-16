@@ -10,6 +10,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from inward_eyes.io import utc_now, write_json, write_text
+from inward_eyes.paths import prepare_run_dir
 from inward_eyes.site_profiles import (
     load_site_profiles,
     match_site_profile,
@@ -25,14 +26,13 @@ def _slug_timestamp(timestamp: str) -> str:
 def run(args: argparse.Namespace) -> Path:
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-site-profiles"
-    output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
     profile_path = Path(args.profile_file).resolve() if args.profile_file else None
     profiles = load_site_profiles(profile_path)
     report = validate_site_profiles(profiles)
     match = None
     if args.url:
         match = match_site_profile(profiles, url=args.url, page_type=args.page_type, site_name=args.site_name)
+    run_dir = prepare_run_dir(args.output_root or "browser-operator-runs", run_id)
 
     write_json(run_dir / "input.json", {"profile_file": str(profile_path) if profile_path else "default", "url": args.url})
     write_json(run_dir / "artifacts" / "site-profiles.json", profiles)

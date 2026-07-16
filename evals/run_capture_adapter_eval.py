@@ -1,21 +1,232 @@
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
+import socket
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_ROOT = ROOT / "scripts"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
+CAPTURE_SCRIPT_ROOT = SCRIPT_ROOT / "capture"
+if str(CAPTURE_SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(CAPTURE_SCRIPT_ROOT))
 
-from inward_eyes.capture import build_page_capture, validate_page_capture_contract
+from inward_eyes.capture import (
+    CAPTURE_STAGE_MANIFEST_PATH,
+    PAGE_WORKFLOW_OWNERSHIP_PATH,
+    build_page_capture,
+    capture_admissibility_errors,
+    claim_page_workflow_ownership,
+    finalize_page_workflow_failure,
+    release_page_workflow_ownership,
+    validate_page_capture_contract,
+    write_capture_stage_manifest,
+)
 from inward_eyes.io import write_json
+from inward_eyes.paths import prepare_run_dir, resolve_run_relative, validate_run_id
+from inward_eyes.validation import validate_manifest_paths
+import current_chrome_page_to_md_runner as current_chrome_wrapper
+import page_to_md_browser_runner as playwright_wrapper
+from playwright_mcp_capture import _final_url_error, _public_url_pin, _request_url_error
 
 OUTPUT_ROOT = ROOT / "evals" / ".tmp" / "capture-adapter"
+
+
+def _tree_snapshot(root: Path) -> tuple[tuple[str, str, bytes], ...]:
+    records: list[tuple[str, str, bytes]] = []
+    for path in sorted(root.rglob("*"), key=lambda item: item.relative_to(root).as_posix()):
+        relative_path = path.relative_to(root).as_posix()
+        if path.is_dir():
+            records.append(("directory", relative_path, b""))
+        elif path.is_file():
+            records.append(("file", relative_path, path.read_bytes()))
+        else:
+            records.append(("other", relative_path, b""))
+    return tuple(records)
+
+
+def run_integrity_boundaries() -> list[str]:
+    errors: list[str] = []
+    public_answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))]
+    private_answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
+    with patch("playwright_mcp_capture.socket.getaddrinfo", side_effect=[public_answer, private_answer]) as resolver:
+        first = _request_url_error(
+            "https://example.com/article",
+            "https://example.com/asset.js",
+            is_document=False,
+        )
+        second = _request_url_error(
+            "https://example.com/article",
+            "https://example.com/asset.js",
+            is_document=False,
+        )
+    if first is not None or second != "public_url_resolves_non_public" or resolver.call_count != 2:
+        errors.append("network_boundary did not resolve and enforce every request at dispatch time")
+    with patch("playwright_mcp_capture.socket.getaddrinfo", return_value=public_answer):
+        pinned_ip, pin_error = _public_url_pin("https://example.com/article")
+    if pin_error is not None or pinned_ip != "93.184.216.34":
+        errors.append("network_boundary did not pin the audited public destination IP")
+    if (
+        _request_url_error(
+            "https://example.test/article",
+            "https://redirected.test/article",
+            is_document=True,
+        )
+        != "redirect_domain_not_approved"
+    ):
+        errors.append("network_boundary allowed a cross-domain document redirect")
+    if (
+        _request_url_error(
+            "https://example.test/article",
+            "https://cdn.example.test/asset.js",
+            is_document=False,
+        )
+        != "request_domain_not_approved"
+    ):
+        errors.append("network_boundary allowed an unapproved subresource domain")
+    if (
+        _final_url_error(
+            "https://example.test/article",
+            "https://redirected.test/article",
+            resolve_dns=False,
+        )
+        != "final_url_domain_not_approved"
+    ):
+        errors.append("network_boundary allowed an unapproved final URL domain")
+    if not str(
+        _final_url_error(
+            "https://example.test/article",
+            "http://127.0.0.1/internal",
+            resolve_dns=False,
+        )
+    ).startswith("final_url_blocked:"):
+        errors.append("network_boundary allowed a private final URL")
+
+    for invalid_run_id in ("../escape", "nested/run", "nested\\run", "CON", "trailing."):
+        try:
+            validate_run_id(invalid_run_id)
+        except ValueError:
+            continue
+        errors.append(f"run_id_boundary accepted {invalid_run_id!r}")
+    path_root = OUTPUT_ROOT / "integrity-paths"
+    path_root.mkdir(parents=True, exist_ok=True)
+    prepared = prepare_run_dir(path_root, "safe-run")
+    try:
+        prepare_run_dir(path_root, "safe-run")
+    except FileExistsError:
+        pass
+    else:
+        errors.append("run_id_boundary allowed reuse of an existing run directory")
+    for invalid_path in ("../escape.json", "nested//file.json", "nested/./file.json", "C:/escape.json"):
+        try:
+            resolve_run_relative(prepared, invalid_path)
+        except ValueError:
+            continue
+        errors.append(f"run_path_boundary accepted {invalid_path!r}")
+    directory_path = prepared / "artifact-directory"
+    directory_path.mkdir()
+    manifest_path_errors = validate_manifest_paths(
+        prepared,
+        {
+            "artifacts": [{"id": "A001", "type": "json", "path": "artifact-directory"}],
+            "evidence": [],
+            "validation": {},
+        },
+    )
+    if not any("path_not_file" in item for item in manifest_path_errors):
+        errors.append("manifest_path_boundary accepted a directory as an artifact file")
+
+    good_capture = base_capture()
+    good_report = validate_page_capture_contract(good_capture)
+    write_json(prepared / "capture" / "page_capture.json", good_capture)
+    write_json(prepared / "validation" / "capture-validation-report.json", good_report)
+    good_manifest = write_capture_stage_manifest(
+        prepared,
+        run_id="safe-run",
+        started_at="2026-07-16T00:00:00Z",
+        finished_at="2026-07-16T00:00:01Z",
+        input_record={"target_url": "https://example.test/docs/m6-capture"},
+        report=good_report,
+        capture_written=True,
+    )
+    if capture_admissibility_errors(
+        capture=good_capture,
+        report=good_report,
+        manifest=good_manifest,
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    ):
+        errors.append("capture_admissibility rejected a fully successful capture")
+    if not capture_admissibility_errors(
+        capture=good_capture,
+        report=good_report,
+        manifest=good_manifest,
+        returncode=1,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    ):
+        errors.append("capture_admissibility ignored a nonzero capture process")
+    if not capture_admissibility_errors(
+        capture=good_capture,
+        report={**good_report, "status": "fail", "validation_status": "failed"},
+        manifest=good_manifest,
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    ):
+        errors.append("capture_admissibility ignored a failed validation report")
+    if not capture_admissibility_errors(
+        capture=good_capture,
+        report=good_report,
+        manifest={**good_manifest, "run_status": "failed", "validation_status": "failed"},
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    ):
+        errors.append("capture_admissibility ignored a failed capture manifest")
+    report_without_schema_version = dict(good_report)
+    del report_without_schema_version["schema_version"]
+    missing_report_errors = capture_admissibility_errors(
+        capture=good_capture,
+        report=report_without_schema_version,
+        manifest=good_manifest,
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    )
+    if "capture_report_shape:required_field_missing:schema_version" not in missing_report_errors:
+        errors.append("capture_admissibility accepted a report missing a required field")
+    invalid_report_type_errors = capture_admissibility_errors(
+        capture=good_capture,
+        report={**good_report, "requires_manual_review": 0},
+        manifest=good_manifest,
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    )
+    if "capture_report_shape:field_invalid:requires_manual_review" not in invalid_report_type_errors:
+        errors.append("capture_admissibility accepted an invalid report field type")
+    manifest_without_operator = dict(good_manifest)
+    del manifest_without_operator["operator"]
+    missing_manifest_errors = capture_admissibility_errors(
+        capture=good_capture,
+        report=good_report,
+        manifest=manifest_without_operator,
+        returncode=0,
+        run_dir=prepared,
+        expected_run_id="safe-run",
+    )
+    if "capture_manifest_shape:required_field_missing:operator" not in missing_manifest_errors:
+        errors.append("capture_admissibility accepted a manifest missing a required field")
+    return errors
 
 
 def base_capture(**overrides: Any) -> dict[str, Any]:
@@ -48,6 +259,36 @@ def run_contract_case(case_name: str, capture: dict[str, Any], expected_status: 
     for term in required_terms:
         if term not in joined:
             errors.append(f"{case_name}: required validation term missing: {term}")
+    return errors
+
+
+def run_schema_invalid_shape_cases() -> list[str]:
+    errors: list[str] = []
+    cases: tuple[tuple[str, str, Any, str], ...] = (
+        ("warnings-string", "warnings", "private_data_warning", "schema:$.warnings:expected_array"),
+        ("schema-version-integer", "schema_version", 1, "schema:$.schema_version:expected_string"),
+        ("capture-id-null", "capture_id", None, "schema:$.capture_id:expected_string"),
+        ("assets-string", "assets", "screenshots/redacted.png", "schema:$.assets:expected_object"),
+        ("document-string", "document", "not-an-object", "schema:$.document:expected_object"),
+        (
+            "document-ast-string",
+            "document_ast",
+            "not-an-object",
+            "schema:$.document_ast:expected_object",
+        ),
+    )
+    for case_name, field, value, expected_error in cases:
+        capture = base_capture()
+        capture[field] = value
+        report = validate_page_capture_contract(capture)
+        if report.get("status") != "fail":
+            errors.append(f"{case_name}: schema-invalid capture passed")
+        if expected_error not in report.get("errors", []):
+            errors.append(f"{case_name}: missing strict shape error {expected_error}")
+        if report.get("requires_manual_review") is not True:
+            errors.append(f"{case_name}: schema-invalid capture did not require manual review")
+        if report.get("run_status") != "failed" or report.get("validation_status") != "failed":
+            errors.append(f"{case_name}: schema-invalid capture did not block completion")
     return errors
 
 
@@ -188,6 +429,242 @@ def run_wrapper_case() -> list[str]:
     validation = json.loads((run_dir / "validation" / "validation-report.json").read_text(encoding="utf-8"))
     if validation["status"] != "pass":
         errors.append(f"wrapper_case validation failed: {validation['errors']}")
+    if (run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH).exists():
+        errors.append("wrapper_case left its ownership marker in the completed run")
+    return errors
+
+
+def run_wrapper_ownership_boundaries() -> list[str]:
+    errors: list[str] = []
+    wrappers = (
+        (
+            "playwright",
+            ROOT / "scripts" / "capture" / "page_to_md_browser_runner.py",
+            ["--url", "https://example.test/docs/existing-run"],
+        ),
+        (
+            "current-chrome",
+            ROOT / "scripts" / "capture" / "current_chrome_page_to_md_runner.py",
+            [
+                "--url",
+                "https://example.test/current/existing-run",
+                "--page-title",
+                "Existing Run",
+            ],
+        ),
+    )
+    for case_name, wrapper_path, wrapper_args in wrappers:
+        output_root = OUTPUT_ROOT / "wrapper-ownership-output" / case_name
+        run_id = f"eval-{case_name}-existing-run"
+        run_dir = output_root / run_id
+        sentinel_path = run_dir / "nested" / "sentinel.bin"
+        sentinel_path.parent.mkdir(parents=True, exist_ok=True)
+        sentinel_path.write_bytes(b"\x00existing-run-must-remain-byte-identical\xff")
+        before = _tree_snapshot(run_dir)
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(wrapper_path),
+                *wrapper_args,
+                "--output-root",
+                str(output_root),
+                "--run-id",
+                run_id,
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        if completed.returncode == 0:
+            errors.append(f"wrapper_ownership_{case_name} reused an existing run directory")
+        if _tree_snapshot(run_dir) != before:
+            errors.append(f"wrapper_ownership_{case_name} modified an existing run directory")
+
+    mismatch_root = OUTPUT_ROOT / "wrapper-ownership-mismatch"
+    mismatch_run_id = "eval-wrapper-owner-mismatch"
+    mismatch_run_dir = prepare_run_dir(mismatch_root, mismatch_run_id)
+    owner_token = "A" * 43
+    claim_page_workflow_ownership(
+        mismatch_run_dir,
+        run_id=mismatch_run_id,
+        ownership_token=owner_token,
+    )
+    before_mismatch = _tree_snapshot(mismatch_run_dir)
+    finalized = finalize_page_workflow_failure(
+        mismatch_run_dir,
+        run_id=mismatch_run_id,
+        failure_code="capture_process_failed:1",
+        ownership_token="B" * 43,
+    )
+    if finalized:
+        errors.append("wrapper_ownership_mismatch allowed a non-owner to finalize the run")
+    if _tree_snapshot(mismatch_run_dir) != before_mismatch:
+        errors.append("wrapper_ownership_mismatch modified a concurrently owned run")
+    if not release_page_workflow_ownership(
+        mismatch_run_dir,
+        run_id=mismatch_run_id,
+        ownership_token=owner_token,
+    ):
+        errors.append("wrapper_ownership_mismatch could not release the legitimate owner marker")
+
+    traversal_root = OUTPUT_ROOT / "wrapper-ownership-traversal"
+    traversal_root.mkdir(parents=True, exist_ok=True)
+    (traversal_root / "sentinel.bin").write_bytes(b"traversal-boundary")
+    traversal_before = _tree_snapshot(traversal_root)
+    for case_name, wrapper_path, wrapper_args in wrappers:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(wrapper_path),
+                *wrapper_args,
+                "--output-root",
+                str(traversal_root / "output"),
+                "--run-id",
+                "../outside",
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        if completed.returncode == 0:
+            errors.append(f"wrapper_ownership_{case_name} accepted a traversal run_id")
+        if _tree_snapshot(traversal_root) != traversal_before:
+            errors.append(f"wrapper_ownership_{case_name} modified paths for a traversal run_id")
+    return errors
+
+
+def _wrapper_boundary_args(
+    *,
+    wrapper_name: str,
+    output_root: Path,
+    run_id: str,
+    content_path: Path,
+) -> argparse.Namespace:
+    common = {
+        "url": f"https://example.test/docs/{run_id}",
+        "output_root": str(output_root),
+        "run_id": run_id,
+        "page_type": "docs",
+        "capture_id": None,
+        "page_title": f"Admission Boundary {wrapper_name}",
+        "canonical_url": None,
+        "site_name": None,
+        "html_file": None,
+        "text_file": None,
+        "selected_main_content_file": str(content_path),
+        "accessibility_snapshot_json": None,
+        "accessibility_snapshot_file": None,
+        "screenshot": [],
+        "screenshot_required": False,
+        "screenshot_reason": "static_public_article",
+        "warning": [],
+        "action": [],
+        "requires_login": False,
+    }
+    if wrapper_name == "playwright":
+        return argparse.Namespace(
+            **common,
+            capture_method="playwright_mcp_dom_snapshot",
+        )
+    return argparse.Namespace(
+        **common,
+        user_approved_current_page=True,
+        login_state="not_required",
+        contains_private_data=False,
+        redaction_applied=False,
+        screenshot_privacy_reviewed=False,
+        redaction_note=[],
+        region_or_locale=None,
+    )
+
+
+def run_wrapper_admission_boundaries() -> list[str]:
+    errors: list[str] = []
+    wrappers = (
+        ("playwright", playwright_wrapper),
+        ("current-chrome", current_chrome_wrapper),
+    )
+    mutations = ("malformed-stage", "report-mismatch", "capture-swap")
+    for wrapper_name, wrapper_module in wrappers:
+        for mutation_name in mutations:
+            output_root = OUTPUT_ROOT / "wrapper-admission-output" / wrapper_name / mutation_name
+            run_id = f"eval-{wrapper_name}-{mutation_name}"
+            run_dir = output_root / run_id
+            content_path = OUTPUT_ROOT / "wrapper-admission-input" / f"{run_id}.txt"
+            content_path.parent.mkdir(parents=True, exist_ok=True)
+            content_path.write_text(
+                "Admission Boundary\n\n"
+                "The renderer must consume only the exact capture, report, and stage manifest "
+                "bytes admitted by its parent wrapper.",
+                encoding="utf-8",
+            )
+            args = _wrapper_boundary_args(
+                wrapper_name=wrapper_name,
+                output_root=output_root,
+                run_id=run_id,
+                content_path=content_path,
+            )
+
+            if mutation_name in {"malformed-stage", "report-mismatch"}:
+                real_run = wrapper_module._run
+                call_count = 0
+
+                def run_then_mutate(command: list[str]) -> subprocess.CompletedProcess[str]:
+                    nonlocal call_count
+                    completed = real_run(command)
+                    call_count += 1
+                    if call_count == 2 and completed.returncode == 0:
+                        if mutation_name == "malformed-stage":
+                            (run_dir / CAPTURE_STAGE_MANIFEST_PATH).write_text(
+                                "{malformed",
+                                encoding="utf-8",
+                            )
+                        else:
+                            report_path = run_dir / "validation" / "capture-validation-report.json"
+                            report = json.loads(report_path.read_text(encoding="utf-8"))
+                            report["warnings"] = list(report.get("warnings", [])) + [
+                                "tampered_after_validation"
+                            ]
+                            write_json(report_path, report)
+                    return completed
+
+                with patch.object(wrapper_module, "_run", side_effect=run_then_mutate):
+                    returncode = wrapper_module.run(args)
+            else:
+                real_create_handoff = wrapper_module.create_continuation_handoff
+
+                def create_then_swap(*handoff_args: Any, **handoff_kwargs: Any) -> str:
+                    token = real_create_handoff(*handoff_args, **handoff_kwargs)
+                    capture_path = run_dir / "capture" / "page_capture.json"
+                    capture = json.loads(capture_path.read_text(encoding="utf-8"))
+                    capture["capture_id"] = f"{capture['capture_id']}-swapped"
+                    write_json(capture_path, capture)
+                    return token
+
+                with patch.object(
+                    wrapper_module,
+                    "create_continuation_handoff",
+                    side_effect=create_then_swap,
+                ):
+                    returncode = wrapper_module.run(args)
+
+            if returncode == 0:
+                errors.append(f"{wrapper_name}-{mutation_name}: wrapper accepted tampered capture stage")
+            manifest_path = run_dir / "manifest.json"
+            if not manifest_path.is_file():
+                errors.append(f"{wrapper_name}-{mutation_name}: no canonical failure manifest was written")
+            else:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if manifest.get("run_status") == "complete":
+                    errors.append(f"{wrapper_name}-{mutation_name}: wrote a complete canonical manifest")
+                if manifest.get("validation_status") != "failed":
+                    errors.append(f"{wrapper_name}-{mutation_name}: canonical failure was not failed")
+            if (run_dir / "artifacts" / "page.md").exists():
+                errors.append(f"{wrapper_name}-{mutation_name}: rendered artifacts from tampered input")
+            if (run_dir / ".inward-eyes-handoff.json").exists():
+                errors.append(f"{wrapper_name}-{mutation_name}: left a reusable handoff marker")
+            if (run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH).exists():
+                errors.append(f"{wrapper_name}-{mutation_name}: left a workflow ownership marker")
     return errors
 
 
@@ -213,7 +690,7 @@ def run_policy_abort_case() -> list[str]:
     errors: list[str] = []
     if completed.returncode == 0:
         errors.append("policy_abort returned success for a red action")
-    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((run_dir / CAPTURE_STAGE_MANIFEST_PATH).read_text(encoding="utf-8"))
     if manifest["run_status"] != "aborted_by_policy":
         errors.append(f"policy_abort run_status {manifest['run_status']!r}")
     if (run_dir / "capture" / "page_capture.json").exists():
@@ -278,6 +755,8 @@ def run_current_chrome_logged_in_with_screenshot() -> list[str]:
         errors.append("current_chrome_logged_in manifest missing screenshot evidence")
     elif not screenshot_entries[0].get("sha256", "").startswith("sha256:"):
         errors.append("current_chrome_logged_in screenshot evidence missing sha256")
+    if (run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH).exists():
+        errors.append("current_chrome_logged_in left its ownership marker in the completed run")
     errors.extend(run_schema_check(run_dir / "capture" / "page_capture.json"))
     return errors
 
@@ -453,7 +932,7 @@ def run_current_chrome_red_action_abort() -> list[str]:
     errors: list[str] = []
     if completed.returncode == 0:
         errors.append("current_chrome_red_action returned success")
-    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((run_dir / CAPTURE_STAGE_MANIFEST_PATH).read_text(encoding="utf-8"))
     if manifest.get("run_status") != "aborted_by_policy":
         errors.append(f"current_chrome_red_action run_status {manifest.get('run_status')!r}")
     if (run_dir / "capture" / "page_capture.json").exists():
@@ -467,9 +946,11 @@ def main() -> int:
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     all_errors: list[str] = []
+    all_errors.extend(run_integrity_boundaries())
 
     valid = base_capture()
     all_errors.extend(run_contract_case("valid-capture", valid, "pass", []))
+    all_errors.extend(run_schema_invalid_shape_cases())
     valid_capture_path = OUTPUT_ROOT / "valid-capture" / "capture" / "page_capture.json"
     all_errors.extend(run_schema_check(valid_capture_path))
     all_errors.extend(run_runner_consumption(valid_capture_path))
@@ -522,6 +1003,8 @@ def main() -> int:
 
     all_errors.extend(run_policy_abort_case())
     all_errors.extend(run_screenshot_staging())
+    all_errors.extend(run_wrapper_ownership_boundaries())
+    all_errors.extend(run_wrapper_admission_boundaries())
     all_errors.extend(run_wrapper_case())
     all_errors.extend(run_current_chrome_logged_in_with_screenshot())
     all_errors.extend(run_current_chrome_missing_screenshot_fails())

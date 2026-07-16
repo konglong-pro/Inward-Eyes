@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from inward_eyes.price import MIN_MATCH_CONFIDENCE
+from inward_eyes.paths import resolve_run_relative
 
 DEFAULT_MAX_CANDIDATES_PER_PLATFORM = 3
 HARD_MAX_TOTAL_CANDIDATES = 20
@@ -424,18 +425,43 @@ def _status_fields(errors: list[str], warnings: list[str], manual_review: bool) 
 
 
 def _load_json(path: Path, errors: list[str], run_dir: Path) -> dict[str, Any] | None:
+    relative_path = path.relative_to(run_dir).as_posix()
     if not path.exists():
-        errors.append(f"missing_file:{path.relative_to(run_dir).as_posix()}")
+        errors.append(f"missing_file:{relative_path}")
         return None
     try:
         loaded = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        errors.append(f"invalid_json:{path.relative_to(run_dir).as_posix()}:{exc}")
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid_json:{relative_path}:{exc.__class__.__name__}")
         return None
-    return loaded if isinstance(loaded, dict) else None
+    if not isinstance(loaded, dict):
+        errors.append(f"json_object_required:{relative_path}")
+        return None
+    if not loaded:
+        errors.append(f"json_object_empty:{relative_path}")
+        return None
+    return loaded
 
 
-def validate_price_candidate_discovery_run(run_dir: Path) -> dict[str, Any]:
+def _load_run_manifest(run_dir: Path, errors: list[str]) -> dict[str, Any] | None:
+    try:
+        manifest_path = resolve_run_relative(run_dir, "manifest.json", must_exist=True)
+    except FileNotFoundError:
+        errors.append("missing_file:manifest.json")
+        return None
+    except ValueError:
+        errors.append("manifest.path_invalid:manifest.json")
+        return None
+    return _load_json(manifest_path, errors, run_dir)
+
+
+def validate_price_candidate_discovery_run(
+    run_dir: Path,
+    manifest_override: dict[str, Any] | None = None,
+    *,
+    pending_manifest_paths: set[str] | None = None,
+    skip_manifest_validation: bool = False,
+) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     manual_review = False
@@ -446,7 +472,9 @@ def validate_price_candidate_discovery_run(run_dir: Path) -> dict[str, Any]:
     manifest_path = run_dir / "manifest.json"
 
     doc = _load_json(candidates_path, errors, run_dir) or {}
-    manifest = _load_json(manifest_path, errors, run_dir) or {}
+    manifest: dict[str, Any] | None = None
+    if not skip_manifest_validation:
+        manifest = manifest_override if manifest_override is not None else _load_run_manifest(run_dir, errors)
     errors.extend(str(item) for item in doc.get("scope_errors", []) if str(item).strip())
 
     if not candidates_csv_path.exists():
@@ -555,20 +583,36 @@ def validate_price_candidate_discovery_run(run_dir: Path) -> dict[str, Any]:
         if candidate.get("approved_for_quote_capture"):
             approved_count += 1
 
-    manifest_paths = {
-        item.get("path")
-        for section in ("artifacts", "evidence")
-        for item in (manifest.get(section) or [])
-        if isinstance(item, dict)
-    }
-    for required_path in (
-        "artifacts/candidates.json",
-        "artifacts/candidates.csv",
-        "artifacts/candidate-review.md",
-        "validation/candidate-validation-report.json",
-    ):
-        if required_path not in manifest_paths and required_path != "validation/candidate-validation-report.json":
-            errors.append(f"candidate.manifest_path_missing:{required_path}")
+    if not skip_manifest_validation and manifest is not None:
+        from inward_eyes.validation import (
+            canonical_manifest_shape_error,
+            validate_manifest_paths,
+            validate_manifest_status,
+        )
+
+        shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=run_dir.name,
+            expected_task="price-compare",
+        )
+        if shape_error:
+            errors.append(f"manifest.shape_invalid:{shape_error}")
+        errors.extend(validate_manifest_paths(run_dir, manifest, allow_missing_paths=pending_manifest_paths))
+        errors.extend(validate_manifest_status(manifest))
+        manifest_paths = {
+            item.get("path")
+            for section in ("artifacts", "evidence")
+            for item in (manifest.get(section) or [])
+            if isinstance(item, dict)
+        }
+        for required_path in (
+            "artifacts/candidates.json",
+            "artifacts/candidates.csv",
+            "artifacts/candidate-review.md",
+            "validation/candidate-validation-report.json",
+        ):
+            if required_path not in manifest_paths and required_path != "validation/candidate-validation-report.json":
+                errors.append(f"candidate.manifest_path_missing:{required_path}")
 
     return {
         **_status_fields(errors, warnings, manual_review),

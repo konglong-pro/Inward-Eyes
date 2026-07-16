@@ -68,8 +68,34 @@ When screenshots are saved:
 - Capture paths must be declared under `assets.screenshots`.
 - The `page-to-md` runner must stage them under `evidence/screenshots/`.
 - Manifest screenshot evidence entries must include `sha256`.
+- The adapter-stage manifest must also declare every saved adapter screenshot with its digest.
+- Screenshot sources must be supported image files; arbitrary files renamed with an image extension are invalid.
 
 Private-data signals must set `contains_private_data=true` and force manual review. Raw private data must be redacted when detected by deterministic scans.
+
+## Capture Admission
+
+Downstream runners must not infer capture success from file existence. They must
+revalidate `page_capture.json`, compare the result with the stored capture report,
+validate the adapter-stage manifest and all declared paths/digests, verify run and
+task identity, and require a zero adapter process exit code. Failed capture files
+may remain for audit, but their text and screenshots are ineligible as supporting
+evidence.
+
+Admission must validate the complete PageCapture shape before semantic checks.
+Wrappers and renderers must consume the same admitted bytes or compare
+authenticated digests for `page_capture.json`, the capture report, and the
+adapter-stage manifest. An admission failure must not copy rejected raw capture,
+report, screenshot, or observation payloads into the canonical run.
+
+When an adapter and renderer share a run directory, the adapter hands off through
+a one-time token bound to the run, target stage, and canonical input path. The
+renderer consumes the marker atomically. Replaying a consumed continuation or
+continuing an already completed run is prohibited.
+
+Wrapper failure finalization additionally requires a matching per-invocation
+ownership marker. A wrapper must never finalize a pre-existing or concurrently
+owned run directory.
 
 ## browser-research Provided-URL Capture
 
@@ -149,3 +175,6 @@ If an adapter cannot capture enough content, it must report:
 - source URL when known
 - screenshot policy status when known
 - manual review requirement
+
+The failure report and stage manifest must remain mutually consistent. They must
+not claim a successful capture merely because a partial file was written.

@@ -107,10 +107,10 @@ python scripts\validation\validate_json_schema.py --schema <schema-path> --json 
 
 Scope:
 
-- Supports `type`, `required`, `properties`, `items`, `const`, `enum`, and `minLength`.
+- Supports local JSON Pointer `$ref`, `type`, `required`, `properties`, `items`, `const`, `enum`, string length and `pattern`, numeric bounds and `multipleOf`, array bounds and uniqueness, object property bounds, `additionalProperties`, `not`, `oneOf`, `anyOf`, and `allOf`.
 - Supports JSON Pointer selection before validation.
-- Skips `$ref`.
-- Does not enforce `pattern`, numeric minimum/maximum, string format, `additionalProperties`, conditional schemas, `oneOf`, `anyOf`, or `allOf`.
+- Rejects external `$ref` values instead of resolving network or filesystem resources.
+- Does not enforce `format`, `if`/`then`/`else`, `dependentRequired`, or the complete JSON Schema 2020-12 vocabulary.
 
 Release meaning:
 
@@ -146,6 +146,8 @@ The stable cross-skill shared-shape gate is:
 ```powershell
 python evals\run_cross_skill_schema_eval.py
 ```
+
+Use `--generate` only for a standalone run that must regenerate its three prerequisite workflow fixtures. CI runs those workflow evals first, then invokes the cross-skill gate without duplicating them.
 
 ## Status Semantics
 

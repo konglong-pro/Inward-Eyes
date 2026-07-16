@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import subprocess
 import sys
@@ -18,12 +19,27 @@ from inward_eyes.discovery import (  # noqa: E402
     validate_research_discovery_run,
 )
 from inward_eyes.io import read_json, utc_now, write_json, write_text  # noqa: E402
+from inward_eyes.paths import create_continuation_handoff, prepare_run_dir  # noqa: E402
 from inward_eyes.research import source_dir_name  # noqa: E402
-from inward_eyes.validation import validate_browser_research_run  # noqa: E402
+from inward_eyes.validation import (  # noqa: E402
+    validate_browser_research_run,
+    validate_manifest_paths,
+    validate_manifest_status,
+)
+
+RESEARCH_CAPTURE_STAGE_MANIFEST = "validation/research-capture-stage-manifest.json"
 
 
 def _slug_timestamp(timestamp: str) -> str:
     return re.sub(r"[^0-9TZ]", "", timestamp)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -267,17 +283,16 @@ def _upsert_path_record(records: list[dict[str, Any]], record: dict[str, Any]) -
     records.append(record)
 
 
-def _merge_manifest(
-    run_dir: Path,
+def _build_merged_manifest(
+    base_manifest: dict[str, Any],
     *,
     input_record: dict[str, Any],
     discovery_report: dict[str, Any],
-    claim_report: dict[str, Any] | None = None,
-) -> None:
-    manifest_path = run_dir / "manifest.json"
-    manifest = read_json(manifest_path)
-    artifacts = [item for item in manifest.get("artifacts", []) if isinstance(item, dict)]
-    evidence = [item for item in manifest.get("evidence", []) if isinstance(item, dict)]
+    claim_report: dict[str, Any],
+) -> dict[str, Any]:
+    manifest = dict(base_manifest)
+    artifacts = [dict(item) for item in manifest.get("artifacts", []) if isinstance(item, dict)]
+    evidence = [dict(item) for item in manifest.get("evidence", []) if isinstance(item, dict)]
     _upsert_path_record(artifacts, {"id": "D001", "type": "discovery_log_json", "path": "artifacts/discovery-log.json"})
     _upsert_path_record(artifacts, {"id": "D002", "type": "discovery_log_markdown", "path": "artifacts/discovery-log.md"})
     _upsert_path_record(
@@ -285,7 +300,6 @@ def _merge_manifest(
         {"id": "DVAL001", "type": "validation_report", "path": "validation/discovery-validation-report.json"},
     )
 
-    claim_report = claim_report or read_json(run_dir / "validation" / "claim-coverage-report.json")
     reports = [discovery_report, claim_report]
     status_failed = any(report.get("status") == "fail" for report in reports)
     warnings = list(
@@ -335,7 +349,8 @@ def _merge_manifest(
             },
         }
     )
-    write_json(manifest_path, manifest)
+    manifest["finished_at"] = utc_now()
+    return manifest
 
 
 def _final_input_record(
@@ -373,10 +388,13 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-research-discovery"
     output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-
     spec = _load_spec(args)
+    try:
+        discovery_log, discovery_errors = build_discovery_log(spec, started_at)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"discovery input invalid: {exc.__class__.__name__}") from exc
+    run_dir = prepare_run_dir(output_root, run_id)
+
     input_record = {
         "input_path": str(args.input) if args.input else None,
         "workflow": "browser-research",
@@ -384,14 +402,6 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         "question": spec.get("research_question") or spec.get("question"),
         "max_sources": spec.get("max_sources"),
     }
-    try:
-        discovery_log, discovery_errors = build_discovery_log(spec, started_at)
-    except (TypeError, ValueError) as exc:
-        report = _validation_report([f"discovery_input_invalid:{exc.__class__.__name__}"])
-        _write_discovery_only_run(run_dir, run_id=run_id, started_at=started_at, input_record=input_record, report=report)
-        print(run_dir)
-        return run_dir, True
-
     selected_sources = _selected_capture_sources(discovery_log, spec)
     if discovery_errors or not selected_sources:
         report = _validation_report(discovery_errors or ["no_sources_selected"])
@@ -418,6 +428,16 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     }
     m8_input_path = run_dir / "capture" / "discovery-selected-sources.json"
     write_json(m8_input_path, m8_input)
+    continuation_token = create_continuation_handoff(
+        run_dir,
+        run_id=run_id,
+        from_stage="research-discovery",
+        to_stage="research-capture",
+        input_path="capture/discovery-selected-sources.json",
+        artifact_sha256={
+            "capture/discovery-selected-sources.json": _sha256_file(m8_input_path),
+        },
+    )
 
     command = [
         sys.executable,
@@ -428,6 +448,9 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         str(output_root),
         "--run-id",
         run_id,
+        "--continue-existing-run",
+        f"--continuation-token={continuation_token}",
+        "--defer-manifest",
         "--min-sources",
         "1",
         "--max-sources",
@@ -435,29 +458,52 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     ]
     completed = subprocess.run(command, cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
     if completed.returncode != 0:
-        report = _validation_report([completed.stderr.strip() or "research_capture_runner_failed"])
-        _write_discovery_only_run(
-            run_dir,
-            run_id=run_id,
-            started_at=started_at,
-            input_record=_final_input_record(args=args, spec=spec, discovery_log=discovery_log, m8_input_path=m8_input_path),
-            report=report,
+        failure_code = f"research_capture_runner_failed:{completed.returncode}"
+        report = _validation_report([failure_code])
+        input_record = _final_input_record(
+            args=args,
+            spec=spec,
             discovery_log=discovery_log,
+            m8_input_path=m8_input_path,
         )
+        _write_discovery_artifacts(run_dir, discovery_log)
+        write_json(run_dir / "input.json", input_record)
+        write_json(run_dir / "validation" / "discovery-validation-report.json", report)
+        write_text(run_dir / "validation" / "missing-sources.md", "# Missing Sources\n\nResearch capture failed.\n")
+        _write_warnings(run_dir / "validation" / "warnings.md", report.get("warnings", []))
+        stage_manifest_path = run_dir / RESEARCH_CAPTURE_STAGE_MANIFEST
+        claim_report_path = run_dir / "validation" / "claim-coverage-report.json"
+        if stage_manifest_path.is_file() and claim_report_path.is_file():
+            failed_manifest = _build_merged_manifest(
+                read_json(stage_manifest_path),
+                input_record=input_record,
+                discovery_report=report,
+                claim_report=read_json(claim_report_path),
+            )
+        else:
+            failed_manifest = _base_manifest(
+                run_id=run_id,
+                started_at=started_at,
+                input_record=input_record,
+                report=report,
+            )
+            failed_manifest["artifacts"] = [
+                {"id": "D001", "type": "discovery_log_json", "path": "artifacts/discovery-log.json"},
+                {"id": "D002", "type": "discovery_log_markdown", "path": "artifacts/discovery-log.md"},
+            ]
+        manifest_errors = validate_manifest_paths(run_dir, failed_manifest) + validate_manifest_status(failed_manifest)
+        if manifest_errors:
+            raise RuntimeError(f"failed research-discovery manifest invalid: {manifest_errors}")
+        write_json(run_dir / "manifest.json", failed_manifest)
+        if stage_manifest_path.is_file():
+            stage_manifest_path.unlink()
         print(run_dir)
         return run_dir, True
 
+    stage_manifest_path = run_dir / RESEARCH_CAPTURE_STAGE_MANIFEST
+    base_manifest = read_json(stage_manifest_path)
     _write_discovery_artifacts(run_dir, discovery_log)
     input_record = _final_input_record(args=args, spec=spec, discovery_log=discovery_log, m8_input_path=m8_input_path)
-    discovery_report = validate_research_discovery_run(run_dir)
-    write_json(run_dir / "validation" / "discovery-validation-report.json", discovery_report)
-    _merge_manifest(run_dir, input_record=input_record, discovery_report=discovery_report)
-
-    final_discovery_report = validate_research_discovery_run(run_dir)
-    write_json(run_dir / "validation" / "discovery-validation-report.json", final_discovery_report)
-    final_claim_report = validate_browser_research_run(run_dir)
-    write_json(run_dir / "validation" / "claim-coverage-report.json", final_claim_report)
-    _merge_manifest(run_dir, input_record=input_record, discovery_report=final_discovery_report, claim_report=final_claim_report)
     for selected in discovery_log.get("selected_sources") or []:
         if isinstance(selected, dict) and selected.get("source_id"):
             (run_dir / "evidence" / source_dir_name(str(selected["source_id"])) / "screenshots").mkdir(
@@ -465,10 +511,41 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
                 exist_ok=True,
             )
     write_json(run_dir / "input.json", input_record)
+    discovery_report = validate_research_discovery_run(run_dir, manifest_override=base_manifest)
+    claim_report = read_json(run_dir / "validation" / "claim-coverage-report.json")
+    final_manifest: dict[str, Any] | None = None
+    for _ in range(4):
+        candidate_manifest = _build_merged_manifest(
+            base_manifest,
+            input_record=input_record,
+            discovery_report=discovery_report,
+            claim_report=claim_report,
+        )
+        checked_discovery_report = validate_research_discovery_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+            pending_manifest_paths={"validation/discovery-validation-report.json"},
+        )
+        checked_claim_report = validate_browser_research_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+            pending_manifest_paths={"validation/discovery-validation-report.json"},
+        )
+        if checked_discovery_report == discovery_report and checked_claim_report == claim_report:
+            final_manifest = candidate_manifest
+            break
+        discovery_report = checked_discovery_report
+        claim_report = checked_claim_report
+    if final_manifest is None:
+        raise RuntimeError("research-discovery manifest validation did not converge")
+    write_json(run_dir / "validation" / "discovery-validation-report.json", discovery_report)
+    write_json(run_dir / "validation" / "claim-coverage-report.json", claim_report)
     _write_warnings(
         run_dir / "validation" / "warnings.md",
-        list(dict.fromkeys(_strings(final_discovery_report.get("warnings")) + _strings(final_claim_report.get("warnings")))),
+        list(dict.fromkeys(_strings(discovery_report.get("warnings")) + _strings(claim_report.get("warnings")))),
     )
+    write_json(run_dir / "manifest.json", final_manifest)
+    stage_manifest_path.unlink()
     print(run_dir)
     return run_dir, False
 

@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import argparse
+import secrets
 import subprocess
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_ROOT = ROOT / "scripts"
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
+
+from inward_eyes.capture import (  # noqa: E402
+    finalize_page_workflow_failure,
+    read_capture_admission_bundle,
+    release_page_workflow_ownership,
+)
+from inward_eyes.paths import create_continuation_handoff, validate_run_id  # noqa: E402
 
 
 def _append_optional(command: list[str], flag: str, value: str | None) -> None:
@@ -23,9 +34,14 @@ def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, cwd=ROOT, text=True)
 
 
-def run(args: argparse.Namespace) -> int:
-    output_root = Path(args.output_root).resolve()
-    run_id = args.run_id
+def _run_claimed(
+    args: argparse.Namespace,
+    *,
+    output_root: Path,
+    run_id: str,
+    run_dir: Path,
+    ownership_token: str,
+) -> int:
     capture_command = [
         sys.executable,
         str(ROOT / "scripts" / "capture" / "playwright_mcp_capture.py"),
@@ -35,6 +51,7 @@ def run(args: argparse.Namespace) -> int:
         str(output_root),
     ]
     _append_optional(capture_command, "--run-id", run_id)
+    capture_command.append(f"--wrapper-ownership-token={ownership_token}")
     _append_optional(capture_command, "--capture-id", args.capture_id)
     _append_optional(capture_command, "--page-title", args.page_title)
     _append_optional(capture_command, "--canonical-url", args.canonical_url)
@@ -56,11 +73,14 @@ def run(args: argparse.Namespace) -> int:
 
     capture_result = _run(capture_command)
     if capture_result.returncode != 0:
+        finalize_page_workflow_failure(
+            output_root / run_id,
+            run_id=run_id,
+            failure_code=f"capture_process_failed:{capture_result.returncode}",
+            ownership_token=ownership_token,
+        )
         return capture_result.returncode
 
-    if not run_id:
-        raise SystemExit("--run-id is required for the wrapper so later stages target the same run directory")
-    run_dir = output_root / run_id
     capture_path = run_dir / "capture" / "page_capture.json"
     capture_report_path = run_dir / "validation" / "capture-validation-report.json"
 
@@ -74,7 +94,38 @@ def run(args: argparse.Namespace) -> int:
         ]
     )
     if capture_validation.returncode != 0:
+        finalize_page_workflow_failure(
+            run_dir,
+            run_id=run_id,
+            failure_code=f"capture_validation_failed:{capture_validation.returncode}",
+            ownership_token=ownership_token,
+        )
         return capture_validation.returncode
+
+    _, _, _, artifact_sha256, admission_errors = read_capture_admission_bundle(
+        run_dir,
+        expected_run_id=run_id,
+        returncode=capture_result.returncode,
+    )
+    if admission_errors:
+        for error in admission_errors:
+            print(f"capture admission failed: {error}", file=sys.stderr)
+        finalize_page_workflow_failure(
+            run_dir,
+            run_id=run_id,
+            failure_code="capture_admission_failed",
+            ownership_token=ownership_token,
+        )
+        return 1
+
+    continuation_token = create_continuation_handoff(
+        run_dir,
+        run_id=run_id,
+        from_stage="playwright-capture",
+        to_stage="page-to-md-render",
+        input_path="capture/page_capture.json",
+        artifact_sha256=artifact_sha256,
+    )
 
     render_result = _run(
         [
@@ -86,11 +137,19 @@ def run(args: argparse.Namespace) -> int:
             str(output_root),
             "--run-id",
             run_id,
+            "--continue-existing-run",
+            f"--continuation-token={continuation_token}",
             "--page-type",
             args.page_type,
         ]
     )
     if render_result.returncode != 0:
+        finalize_page_workflow_failure(
+            run_dir,
+            run_id=run_id,
+            failure_code=f"page_render_failed:{render_result.returncode}",
+            ownership_token=ownership_token,
+        )
         return render_result.returncode
 
     return _run(
@@ -100,6 +159,30 @@ def run(args: argparse.Namespace) -> int:
             str(run_dir),
         ]
     ).returncode
+
+
+def run(args: argparse.Namespace) -> int:
+    output_root = Path(args.output_root).resolve()
+    run_id = validate_run_id(args.run_id)
+    run_dir = output_root / run_id
+    if run_dir.exists() or run_dir.is_symlink():
+        print(f"run directory already exists; choose a new run_id: {run_dir}", file=sys.stderr)
+        return 1
+    ownership_token = secrets.token_urlsafe(32)
+    try:
+        return _run_claimed(
+            args,
+            output_root=output_root,
+            run_id=run_id,
+            run_dir=run_dir,
+            ownership_token=ownership_token,
+        )
+    finally:
+        release_page_workflow_ownership(
+            run_dir,
+            run_id=run_id,
+            ownership_token=ownership_token,
+        )
 
 
 def main() -> int:

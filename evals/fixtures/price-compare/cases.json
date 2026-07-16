@@ -38,6 +38,6 @@
     "required_error_terms": [
       "quote.Q001.screenshot_required_but_missing"
     ],
-    "expected_lowest": "Q001"
+    "expected_lowest": null
   }
 ]

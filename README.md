@@ -23,14 +23,15 @@ Inward Eyes uses:
 
 ## Current Release
 
-Current release class: post-M12-M20 local operations hardening.
+Current release class: post-M21 contract-integrity hardening.
 
 The current repository includes deterministic local runners plus adapter-boundary wrappers for approved browser captures and bounded discovery. It also includes local adapter matrix, replay eval, privacy, site profile, review, package dry-run, batch/retry/index, and export utilities. Runtime browser operation remains tightly scoped and evidence-backed; marketplace publication is not implemented.
 
-M11 froze public contracts for the existing M7-M10 workflow set. M12-M20 added deterministic local operations without adding skills or browser backends.
+M11 froze public contracts for the existing M7-M10 workflow set. M12-M20 added deterministic local operations, and M21 closed contract-integrity gaps without adding skills or browser backends.
 
 Version semantics:
 
+- Current local manifest: base `0.2.0` with Codex cachebuster metadata `0.2.0+codex.20260710093025`; tagged and marketplace versions are separate release decisions.
 - `0.1.x`: `page-to-md` local deterministic workflow.
 - `0.2.x`: three local workflows plus local plugin validation and CI.
 - `0.3.x`: optional Playwright MCP browser capture adapter MVP for public article/docs pages.
@@ -39,11 +40,11 @@ Version semantics:
 - `0.6.x`: `price-compare` provided product-URL quote capture MVP.
 - `0.7.x`: `browser-research` small-scope public source discovery MVP.
 - `0.8.x`: M10 small-scope discovery consolidation, including approved price candidate discovery.
-- `1.0.0`: stable browser-backed plugin, still read-only. M11-M20 provide the release-candidate hardening and local operations baseline for this target.
+- `1.0.0`: stable browser-backed plugin, still read-only. M11-M21 provide the release-candidate, local operations, and integrity-hardening baseline for this target.
 
 ## Current State
 
-M0-M20 are complete as the repository-contained baseline:
+M0-M21 are complete as the repository-contained baseline:
 
 - `page-to-md`: local HTML, page capture JSON, public URL adapter captures, and one user-approved current Chrome page capture to evidence-backed Markdown.
 - `browser-research`: local research input JSON, provided-URL capture, claim ledger validation, source records, reports, source notes, and M10A small-scope public source discovery.
@@ -74,6 +75,7 @@ Closeouts:
 Latest closeout and contract docs:
 
 - `docs/planning/archive/m12-m20-post-rc-expansion-closeout.md`
+- `docs/planning/archive/m21-contract-integrity-hardening-closeout.md`
 - `docs/contracts/artifact-contracts.md`
 - `docs/contracts/error-status-contract.md`
 - `docs/contracts/schemas-and-validation-contract.md`
@@ -98,9 +100,13 @@ Inward Eyes/
   schemas/
   scripts/
   evals/
+  examples/
+  profiles/
   docs/
   AGENTS.md
   CONTEXT.md
+  LICENSE
+  package-files.txt
   README.md
 ```
 
@@ -137,9 +143,14 @@ Run from the repository root.
 - Validate one price candidate discovery run: `python scripts/validation/validate_price_candidate_discovery.py <run_dir>`
 - Validate one price-compare run: `python scripts/validation/validate_price_compare.py <run_dir>`
 - Validate JSON against schema: `python scripts/validation/validate_json_schema.py --schema <schema-path> --json <json-path>`
-- Validate plugin: `python C:\Users\62406\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py "E:\Inward Eyes"`
+- Validate plugin: `python scripts\validation\validate_plugin.py .`
+- Validate release inputs: `python scripts\validation\validate_release.py .`
 - Build/package dry-run: `python scripts\plugin_package.py --output-dir dist`
 
 ## Safety Baseline
 
 Inward Eyes is read-only by default. It must not buy, pay, post, comment, like, follow, send messages, claim coupons, add to cart, change account settings, process passwords, submit CAPTCHA, bypass anti-bot systems, or export unrelated personal data.
+
+## License
+
+Inward Eyes is available under the [MIT License](LICENSE).

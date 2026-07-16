@@ -122,6 +122,41 @@ def run_case(case: dict[str, object]) -> list[str]:
     return errors
 
 
+def run_validator_fail_closed_cases() -> list[str]:
+    errors: list[str] = []
+    source_run = OUTPUT_ROOT / "eval-bounded-three-sources"
+    cases = (
+        ("validator-non-object", "[]\n", "json_object_required:artifacts/discovery-log.json"),
+        ("validator-invalid-source-id", None, "discovery.selected_source_id_invalid:../../escape"),
+    )
+    for name, replacement, required_error in cases:
+        run_dir = OUTPUT_ROOT / name
+        shutil.copytree(source_run, run_dir)
+        discovery_path = run_dir / "artifacts" / "discovery-log.json"
+        if replacement is not None:
+            discovery_path.write_text(replacement, encoding="utf-8")
+        else:
+            discovery = read_json(discovery_path)
+            discovery["selected_sources"][0]["source_id"] = "../../escape"
+            discovery_path.write_text(json.dumps(discovery, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "validation" / "validate_research_discovery.py"),
+                str(run_dir),
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        if completed.returncode == 0:
+            errors.append(f"{name}: malformed discovery evidence passed validation")
+            continue
+        if required_error not in completed.stdout:
+            errors.append(f"{name}: missing fail-closed error {required_error}: {completed.stderr.strip()}")
+    return errors
+
+
 def main() -> int:
     if OUTPUT_ROOT.exists():
         shutil.rmtree(OUTPUT_ROOT)
@@ -130,6 +165,7 @@ def main() -> int:
     all_errors: list[str] = []
     for case in load_cases():
         all_errors.extend(run_case(case))
+    all_errors.extend(run_validator_fail_closed_cases())
 
     if all_errors:
         print("FAIL")

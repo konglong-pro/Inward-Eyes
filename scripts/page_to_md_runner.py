@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,11 +13,13 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from inward_eyes.html_extract import extract_html
-from inward_eyes.io import read_json, relative_to, utc_now, write_json, write_text
+from inward_eyes.io import read_json, relative_to, utc_now, write_bytes, write_json, write_text
+from inward_eyes.capture import read_capture_admission_bundle, screenshot_file_is_valid
 from inward_eyes.markdown import render_page_markdown
+from inward_eyes.paths import prepare_run_dir, validate_run_id
 from inward_eyes.validation import validate_page_to_md_run
 
-SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 SCREENSHOT_REQUIRED_PAGE_TYPES = {"x_thread", "forum_thread", "product_page"}
 SCREENSHOT_REQUIRED_WARNINGS = {
     "dynamic_page",
@@ -158,14 +159,22 @@ def _capture_asset_roots(input_path: Path) -> list[Path]:
 
 
 def _resolve_capture_asset(raw_path: str, input_path: Path) -> Path | None:
-    if not raw_path or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_path):
+    if (
+        not raw_path
+        or "\\" in raw_path
+        or ":" in raw_path
+        or raw_path.startswith("/")
+        or any(part in {"", ".", ".."} for part in raw_path.split("/"))
+    ):
         return None
-    path = Path(raw_path)
-    if path.is_absolute():
-        return path.resolve() if path.exists() else None
+    path = Path(*raw_path.split("/"))
     for root in _capture_asset_roots(input_path):
         candidate = (root / path).resolve()
-        if candidate.exists():
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            continue
+        if candidate.is_file():
             return candidate
     return None
 
@@ -204,13 +213,17 @@ def stage_capture_screenshots(
         if source_path is None:
             warnings.append(f"screenshot_asset_missing:{raw_path}")
             continue
-        if source_path.suffix.lower() not in SCREENSHOT_EXTENSIONS:
-            warnings.append(f"screenshot_asset_unsupported_extension:{raw_path}")
+        if not screenshot_file_is_valid(source_path):
+            warnings.append(f"screenshot_asset_missing_or_invalid:{raw_path}")
             continue
         destination = run_dir / "evidence" / "screenshots" / _safe_asset_name(raw_path, index)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if source_path.resolve() != destination.resolve():
-            shutil.copy2(source_path, destination)
+            write_bytes(destination, source_path.read_bytes())
+        if not screenshot_file_is_valid(destination):
+            destination.unlink(missing_ok=True)
+            warnings.append(f"screenshot_asset_copy_invalid:{raw_path}")
+            continue
         staged.append(
             {
                 "type": "screenshot",
@@ -406,24 +419,12 @@ def create_manifest(
     started_at: str,
     finished_at: str,
     input_record: dict[str, Any],
-    validation_report: dict[str, Any] | None,
+    validation_report: dict[str, Any],
     warnings: list[str],
     capture_path: str | None = None,
     evidence_assets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    validation = validation_report or {
-        "status": "pending",
-        "warnings": warnings,
-        "requires_manual_review": bool(warnings),
-        "run_status": "partial" if warnings else "complete",
-        "validation_status": "pending",
-        "manual_review": {
-            "required": bool(warnings),
-            "severity": "warning" if warnings else "info",
-            "reasons": [],
-        },
-        "completion_blockers": [],
-    }
+    validation = validation_report
     report_path = "validation/validation-report.json"
     evidence = []
     if capture_path:
@@ -439,8 +440,7 @@ def create_manifest(
                 **({"sha256": asset["sha256"]} if asset.get("sha256") else {}),
             }
         )
-    if validation_report is not None:
-        evidence.append({"id": "V001", "type": "validation_report", "path": "validation/validation-report.json"})
+    evidence.append({"id": "V001", "type": "validation_report", "path": "validation/validation-report.json"})
 
     return {
         "run_id": run_id,
@@ -465,7 +465,9 @@ def create_manifest(
         "warnings": warnings,
         "requires_manual_review": bool(validation.get("requires_manual_review")),
         "run_status": validation.get("run_status", "failed" if validation.get("status") == "fail" else "partial" if validation.get("requires_manual_review") else "complete"),
-        "validation_status": validation.get("validation_status", "passed" if validation.get("status") == "pass" else "failed" if validation.get("status") == "fail" else "pending"),
+        "validation_status": validation.get("validation_status")
+        if validation.get("validation_status") in {"passed", "failed"}
+        else "failed",
         "manual_review": validation.get(
             "manual_review",
             {"required": bool(validation.get("requires_manual_review")), "severity": "warning" if validation.get("requires_manual_review") else "info", "reasons": []},
@@ -483,17 +485,35 @@ def run(args: argparse.Namespace) -> Path:
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-page-to-md"
     output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
-    (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
-    (run_dir / "evidence").mkdir(parents=True, exist_ok=True)
-    (run_dir / "validation").mkdir(parents=True, exist_ok=True)
+    continue_existing = bool(getattr(args, "continue_existing_run", False))
+    continuation_artifact_sha256: dict[str, str] | None = None
+    if continue_existing:
+        run_id = validate_run_id(run_id)
+        expected_input_path = (output_root / run_id / "capture" / "page_capture.json").resolve()
+        if input_path != expected_input_path:
+            raise SystemExit("continued page-to-md run must consume capture/page_capture.json from that run")
 
     raw_json: dict[str, Any] | None = None
-    if input_path.suffix.lower() == ".json":
+    html_input: str | None = None
+    if continue_existing:
+        raw_json, _, _, continuation_artifact_sha256, admission_errors = read_capture_admission_bundle(
+            output_root / run_id,
+            expected_run_id=run_id,
+            returncode=0,
+        )
+        if admission_errors:
+            raise SystemExit(
+                "continued capture admission failed: " + ", ".join(admission_errors)
+            )
+        if raw_json is None:
+            raise SystemExit("continued capture admission did not return page_capture.json")
+    elif input_path.suffix.lower() == ".json":
         loaded_json = read_json(input_path)
         if not isinstance(loaded_json, dict):
             raise SystemExit("JSON input must be an object")
         raw_json = loaded_json
+    else:
+        html_input = input_path.read_text(encoding=args.encoding)
 
     capture_input = raw_json if is_page_capture(raw_json) else None
     capture_source_url = None
@@ -509,29 +529,45 @@ def run(args: argparse.Namespace) -> Path:
         "page_type": args.page_type,
         "requires_login": args.requires_login,
     }
-    write_json(run_dir / "input.json", input_record)
 
     capture_path: str | None = None
     if raw_json is not None:
         if capture_input:
             capture_path = "capture/page_capture.json"
-            write_json(run_dir / capture_path, capture_input)
             input_record["capture_path"] = capture_path
-            write_json(run_dir / "input.json", input_record)
         capture = normalize_page_capture(raw_json, source_url)
     else:
-        html = input_path.read_text(encoding=args.encoding)
-        capture = extract_html(html, source_url)
+        capture = extract_html(html_input or "", source_url)
 
     ast_for_classification = capture.get("document_ast", {})
     page_type = classify_page_type(source_url, ast_for_classification, args.page_type)
     accessed_at = capture.get("captured_at") if capture_input and isinstance(capture.get("captured_at"), str) else started_at
     metadata, ast, warnings = normalize_capture(capture, source_url, page_type, args.requires_login, accessed_at)
+    input_record["screenshot_policy"] = metadata["extraction"]["screenshot_policy"]
+
+    run_dir = prepare_run_dir(
+        output_root,
+        run_id,
+        continue_existing=continue_existing,
+        continuation_required_paths=("capture/page_capture.json",) if continue_existing else (),
+        continuation_manifest_tasks=("capture-adapter",) if continue_existing else (),
+        continuation_manifest_path="validation/capture-stage-manifest.json",
+        continuation_token=getattr(args, "continuation_token", None),
+        continuation_stage="page-to-md-render" if continue_existing else None,
+        continuation_input_path="capture/page_capture.json" if continue_existing else None,
+        continuation_artifact_sha256=continuation_artifact_sha256,
+    )
+    (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+    (run_dir / "evidence").mkdir(parents=True, exist_ok=True)
+    (run_dir / "validation").mkdir(parents=True, exist_ok=True)
+    write_json(run_dir / "input.json", input_record)
+    if capture_path and capture_input:
+        write_json(run_dir / capture_path, capture_input)
+
     staged_screenshots = stage_capture_screenshots(capture_input, input_path, run_dir, started_at, warnings)
     metadata["assets"] = staged_screenshots
     metadata["extraction"]["warnings"] = list(dict.fromkeys(warnings))
     ast["warnings"] = list(dict.fromkeys(warnings))
-    input_record["screenshot_policy"] = metadata["extraction"]["screenshot_policy"]
 
     source_record = build_source_record(metadata, run_dir)
 
@@ -542,48 +578,39 @@ def run(args: argparse.Namespace) -> Path:
     write_text(run_dir / "artifacts" / "page.md", markdown)
     write_warnings(run_dir / "validation" / "warnings.md", warnings)
 
-    draft_manifest = create_manifest(
+    final_validation_report = validate_page_to_md_run(
         run_dir,
-        run_id,
-        started_at,
-        utc_now(),
-        input_record,
-        None,
-        warnings,
-        capture_path,
-        staged_screenshots,
+        manifest_override={},
+        skip_manifest_validation=True,
     )
-    write_json(run_dir / "manifest.json", draft_manifest)
-
-    validation_report = validate_page_to_md_run(run_dir)
-    write_json(run_dir / "validation" / "validation-report.json", validation_report)
-
-    final_manifest = create_manifest(
-        run_dir,
-        run_id,
-        started_at,
-        utc_now(),
-        input_record,
-        validation_report,
-        warnings,
-        capture_path,
-        staged_screenshots,
-    )
-    write_json(run_dir / "manifest.json", final_manifest)
-    final_validation_report = validate_page_to_md_run(run_dir)
+    final_manifest: dict[str, Any] | None = None
+    for _ in range(4):
+        candidate_manifest = create_manifest(
+            run_dir,
+            run_id,
+            started_at,
+            utc_now(),
+            input_record,
+            final_validation_report,
+            warnings,
+            capture_path,
+            staged_screenshots,
+        )
+        checked_report = validate_page_to_md_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+            pending_manifest_paths={"validation/validation-report.json"},
+        )
+        if checked_report == final_validation_report:
+            final_manifest = candidate_manifest
+            break
+        final_validation_report = checked_report
+    if final_manifest is None:
+        raise RuntimeError("page-to-md manifest validation did not converge")
     write_json(run_dir / "validation" / "validation-report.json", final_validation_report)
-    final_manifest = create_manifest(
-        run_dir,
-        run_id,
-        started_at,
-        utc_now(),
-        input_record,
-        final_validation_report,
-        warnings,
-        capture_path,
-        staged_screenshots,
-    )
     write_json(run_dir / "manifest.json", final_manifest)
+    if continue_existing:
+        (run_dir / "validation" / "capture-stage-manifest.json").unlink(missing_ok=True)
     print(run_dir)
     return run_dir
 
@@ -597,6 +624,12 @@ def main() -> int:
     parser.add_argument("--page-type", default="auto", choices=["auto", "article", "blog", "docs", "x_thread", "forum_thread", "product_page", "unknown"])
     parser.add_argument("--requires-login", action="store_true", help="Mark the page as requiring login.")
     parser.add_argument("--encoding", default="utf-8", help="Input file encoding.")
+    parser.add_argument(
+        "--continue-existing-run",
+        action="store_true",
+        help="Continue an adapter-created page-to-md run after validating its manifest and capture path.",
+    )
+    parser.add_argument("--continuation-token", help=argparse.SUPPRESS)
     args = parser.parse_args()
     run(args)
     return 0

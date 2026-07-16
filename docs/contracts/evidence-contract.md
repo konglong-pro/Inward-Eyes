@@ -33,6 +33,13 @@ Every Inward Eyes output must be auditable. Evidence is the product boundary bet
 
 The plugin package must not be used as the default runtime output location.
 
+`run_id` values must use the repository's canonical ASCII identifier grammar and
+must never be interpreted as paths. Source IDs must use `S###`. Every path stored
+in a manifest, SourceRecord, handoff record, or validation report must be a
+canonical POSIX-style path relative to the run directory. Absolute paths,
+backslashes, drive/ADS colons, empty segments, `.`/`..`, symlink escapes, and
+directory records where a file is required must fail validation.
+
 ## Required Manifest Fields
 
 v1 `manifest.json` must include:
@@ -155,6 +162,19 @@ Screenshot evidence is required for:
 
 Screenshot evidence staged into `evidence/screenshots/` must be recorded in `manifest.json` with a `sha256:<hex>` digest. Validators must fail when a required screenshot is missing on disk or when the manifest screenshot digest is absent or does not match the staged file.
 
+The same digest rule applies to per-source screenshot directories and adapter
+stage screenshots under `capture/`. A file extension alone is not screenshot
+evidence; staged screenshot files must have a supported image signature.
+
+Failed adapter captures may be retained as audit evidence, but they must not be
+used to support a research claim, qualify a price quote, or satisfy a required
+screenshot policy. Capture admission requires all of the following to agree:
+
+- the adapter process exited successfully;
+- `page_capture.json` passes the capture contract when revalidated;
+- the stored validation report matches that revalidation and has no errors or blockers;
+- the adapter-stage manifest has consistent status, paths, run identity, task identity, capture evidence, and screenshot digests.
+
 ## Default Exclusions
 
 Do not save by default:
@@ -168,6 +188,24 @@ Do not save by default:
 - Full account pages unrelated to the task.
 
 Network evidence may be enabled only by an explicit future debug policy with redaction.
+
+## Write And Continuation Integrity
+
+JSON, text, binary evidence, validation reports, and manifests must be written by
+temporary-file replacement in the destination directory. A canonical
+`manifest.json` is finalized only after candidate status and path checks converge
+in memory, and it is written once for that final workflow stage. A completed
+canonical manifest must never contain `validation_status=pending`.
+
+Multi-stage runners must use a one-time, run-bound, input-bound handoff marker.
+The marker authenticates its run, source/target stages, canonical input path, and
+any bound admission-artifact digests with an HMAC derived from the one-time
+token. The next stage atomically consumes that marker before writing artifacts
+and must compare digests from the exact bytes it preloaded. A failed
+authentication or digest check restores the valid marker so the legitimate
+handoff can be retried; successful consumption removes it permanently. A stale,
+missing, mismatched, tampered, or already-consumed handoff must stop the
+continuation, so an existing completed run cannot be replayed or overwritten.
 
 ## SourceRecord Shape
 
@@ -210,3 +248,6 @@ Validators must check:
 - Timestamps are present.
 - Screenshot requirements are enforced through `screenshot_policy`.
 - Output artifacts reference source IDs or source URLs consistently.
+- Manifest, validation, and SourceRecord paths remain inside the run directory and point to files.
+- Required screenshot files have matching manifest digests.
+- Corrupt or non-object JSON fails closed rather than disappearing from review, index, retry, or export views.

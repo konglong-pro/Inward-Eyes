@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,11 +13,14 @@ if str(SCRIPT_ROOT) not in sys.path:
 
 from inward_eyes.capture import (  # noqa: E402
     build_page_capture,
+    claim_page_workflow_ownership,
+    screenshot_file_is_valid,
     validate_page_capture_contract,
     write_capture_stage_manifest,
     write_capture_warnings,
 )
-from inward_eyes.io import utc_now, write_json  # noqa: E402
+from inward_eyes.io import utc_now, write_bytes, write_json  # noqa: E402
+from inward_eyes.paths import prepare_run_dir  # noqa: E402
 from inward_eyes.safety import classify_action  # noqa: E402
 
 SCREENSHOT_REQUIRED_PAGE_TYPES = {"x_thread", "forum_thread", "product_page"}
@@ -38,7 +40,7 @@ def _slug_timestamp(timestamp: str) -> str:
 
 def _safe_asset_name(raw_name: str, index: int) -> str:
     suffix = Path(raw_name).suffix.lower()
-    if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+    if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
         suffix = ".png"
     stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(raw_name).stem).strip(".-") or f"screenshot-{index:03d}"
     return f"{index:03d}-{stem}{suffix}"
@@ -152,12 +154,16 @@ def _copy_reviewed_screenshots(args: argparse.Namespace, run_dir: Path) -> tuple
     warnings: list[str] = []
     for index, raw_path in enumerate(args.screenshot, start=1):
         source = Path(raw_path).resolve()
-        if not source.exists():
+        if not screenshot_file_is_valid(source):
             warnings.append(f"screenshot_asset_missing:{raw_path}")
             continue
         destination = run_dir / "capture" / "screenshots" / _safe_asset_name(raw_path, index)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, destination)
+        write_bytes(destination, source.read_bytes())
+        if not screenshot_file_is_valid(destination):
+            destination.unlink(missing_ok=True)
+            warnings.append(f"screenshot_asset_copy_invalid:{raw_path}")
+            continue
         copied.append(f"screenshots/{destination.name}")
     return copied, warnings
 
@@ -165,9 +171,25 @@ def _copy_reviewed_screenshots(args: argparse.Namespace, run_dir: Path) -> tuple
 def run(args: argparse.Namespace) -> Path:
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-current-chrome-capture"
-    output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    html = args.html if args.html is not None else _read_optional_text(args.html_file)
+    text = args.text if args.text is not None else _read_optional_text(args.text_file)
+    selected_main_content = (
+        args.selected_main_content
+        if args.selected_main_content is not None
+        else _read_optional_text(args.selected_main_content_file)
+    )
+    accessibility_snapshot = _read_optional_json_or_text(
+        args.accessibility_snapshot_json,
+        args.accessibility_snapshot_file,
+    )
+    for raw_path in args.screenshot:
+        screenshot_file_is_valid(Path(raw_path).resolve())
+    run_dir = prepare_run_dir(args.output_root or "browser-operator-runs", run_id)
+    claim_page_workflow_ownership(
+        run_dir,
+        run_id=run_id,
+        ownership_token=getattr(args, "wrapper_ownership_token", None),
+    )
 
     input_record: dict[str, Any] = {
         "visible_url": args.url,
@@ -209,17 +231,6 @@ def run(args: argparse.Namespace) -> Path:
             print(run_dir)
             return run_dir
 
-    html = args.html if args.html is not None else _read_optional_text(args.html_file)
-    text = args.text if args.text is not None else _read_optional_text(args.text_file)
-    selected_main_content = (
-        args.selected_main_content
-        if args.selected_main_content is not None
-        else _read_optional_text(args.selected_main_content_file)
-    )
-    accessibility_snapshot = _read_optional_json_or_text(
-        args.accessibility_snapshot_json,
-        args.accessibility_snapshot_file,
-    )
     if not _has_observation_payload(html, text, selected_main_content, accessibility_snapshot):
         report = _failure_report("content.payload_missing")
         _write_failure_run(run_dir, run_id=run_id, started_at=started_at, input_record=input_record, report=report)
@@ -290,6 +301,7 @@ def main() -> int:
     parser.add_argument("--user-approved-current-page", action="store_true", help="Required approval boundary.")
     parser.add_argument("--output-root", default="browser-operator-runs")
     parser.add_argument("--run-id")
+    parser.add_argument("--wrapper-ownership-token", help=argparse.SUPPRESS)
     parser.add_argument("--capture-id")
     parser.add_argument("--page-title", required=True)
     parser.add_argument("--canonical-url")

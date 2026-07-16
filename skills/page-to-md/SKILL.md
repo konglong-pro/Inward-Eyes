@@ -64,32 +64,22 @@ Allowed block types:
 
 - `heading`
 - `paragraph`
-- `list`
+- `list_item`
 - `quote`
 - `code`
 - `table`
 - `image`
 - `thread_post`
-- `product_summary`
-- `unknown_block`
 
-Thread-like pages must use `thread_post` blocks, not fake headings. Product pages converted by `page-to-md` must use `product_summary` blocks, not price comparison records. Every block should carry `source_ref` when available.
+Thread-like pages must use `thread_post` blocks, not fake headings. Product pages converted by `page-to-md` remain page documents composed from the same block types; product pricing conclusions belong only in `price-compare`. Every block should carry `source_ref` when available.
 
 Minimum `thread_post` fields:
 
 ```json
 {
   "type": "thread_post",
-  "author": {
-    "value": "username",
-    "confidence": 0.9,
-    "evidence": "visible_post_header"
-  },
-  "published_at": {
-    "value": null,
-    "confidence": 0,
-    "evidence": "not_found"
-  },
+  "author": "username",
+  "published_at": null,
   "body_blocks": [],
   "permalink": null,
   "warnings": ["published_time_not_found"]

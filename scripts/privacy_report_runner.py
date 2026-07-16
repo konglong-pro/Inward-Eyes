@@ -10,6 +10,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from inward_eyes.io import utc_now, write_json, write_text
+from inward_eyes.paths import prepare_run_dir
 from inward_eyes.privacy import build_privacy_report, render_privacy_markdown
 
 
@@ -23,9 +24,8 @@ def run(args: argparse.Namespace) -> Path:
         raise SystemExit(f"target does not exist: {target}")
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-privacy-report"
-    output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
     report = build_privacy_report(target)
+    run_dir = prepare_run_dir(args.output_root or "browser-operator-runs", run_id)
     write_json(run_dir / "input.json", {"target": str(target)})
     write_json(run_dir / "artifacts" / "privacy-report.json", report)
     write_text(run_dir / "artifacts" / "privacy-report.md", render_privacy_markdown(report))

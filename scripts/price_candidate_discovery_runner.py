@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import subprocess
 import sys
@@ -12,6 +13,7 @@ if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
 from inward_eyes.io import read_json, utc_now, write_json, write_text  # noqa: E402
+from inward_eyes.paths import create_continuation_handoff, prepare_run_dir  # noqa: E402
 from inward_eyes.price_discovery import (  # noqa: E402
     APPROVAL_POLICY_AUTO_HIGH_CONFIDENCE,
     DEFAULT_MAX_CANDIDATES_PER_PLATFORM,
@@ -21,11 +23,25 @@ from inward_eyes.price_discovery import (  # noqa: E402
     render_candidates_csv,
     validate_price_candidate_discovery_run,
 )
-from inward_eyes.validation import validate_price_compare_run  # noqa: E402
+from inward_eyes.validation import (  # noqa: E402
+    validate_manifest_paths,
+    validate_manifest_status,
+    validate_price_compare_run,
+)
+
+PRICE_CAPTURE_STAGE_MANIFEST = "validation/price-capture-stage-manifest.json"
 
 
 def _slug_timestamp(timestamp: str) -> str:
     return re.sub(r"[^0-9TZ]", "", timestamp)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -255,17 +271,16 @@ def _upsert_path_record(records: list[dict[str, Any]], record: dict[str, Any]) -
     records.append(record)
 
 
-def _merge_manifest(
-    run_dir: Path,
+def _build_merged_manifest(
+    base_manifest: dict[str, Any],
     *,
     input_record: dict[str, Any],
     candidate_report: dict[str, Any],
     price_report: dict[str, Any] | None = None,
-) -> None:
-    manifest_path = run_dir / "manifest.json"
-    manifest = read_json(manifest_path)
-    artifacts = [item for item in manifest.get("artifacts", []) if isinstance(item, dict)]
-    evidence = [item for item in manifest.get("evidence", []) if isinstance(item, dict)]
+) -> dict[str, Any]:
+    manifest = dict(base_manifest)
+    artifacts = [dict(item) for item in manifest.get("artifacts", []) if isinstance(item, dict)]
+    evidence = [dict(item) for item in manifest.get("evidence", []) if isinstance(item, dict)]
     _upsert_path_record(artifacts, {"id": "CAND001", "type": "candidate_json", "path": "artifacts/candidates.json"})
     _upsert_path_record(artifacts, {"id": "CAND002", "type": "candidate_csv", "path": "artifacts/candidates.csv"})
     _upsert_path_record(artifacts, {"id": "CAND003", "type": "candidate_review", "path": "artifacts/candidate-review.md"})
@@ -322,7 +337,42 @@ def _merge_manifest(
             },
         }
     )
-    write_json(manifest_path, manifest)
+    manifest["finished_at"] = utc_now()
+    return manifest
+
+
+def _converge_candidate_manifest(
+    run_dir: Path,
+    *,
+    run_id: str,
+    started_at: str,
+    input_record: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    candidate_report = validate_price_candidate_discovery_run(
+        run_dir,
+        manifest_override={},
+        skip_manifest_validation=True,
+    )
+    final_manifest: dict[str, Any] | None = None
+    for _ in range(4):
+        candidate_manifest = _base_manifest(
+            run_id=run_id,
+            started_at=started_at,
+            input_record=input_record,
+            candidate_report=candidate_report,
+        )
+        checked_report = validate_price_candidate_discovery_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+            pending_manifest_paths={"validation/candidate-validation-report.json"},
+        )
+        if checked_report == candidate_report:
+            final_manifest = candidate_manifest
+            break
+        candidate_report = checked_report
+    if final_manifest is None:
+        raise RuntimeError("price-candidate manifest validation did not converge")
+    return candidate_report, final_manifest
 
 
 def _input_record(
@@ -358,13 +408,13 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     started_at = utc_now()
     run_id = args.run_id or f"{_slug_timestamp(started_at)}-price-candidate-discovery"
     output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
+    spec, input_path = _load_spec(args)
+    candidates_model = normalize_candidates(spec, started_at)
+    run_dir = prepare_run_dir(output_root, run_id)
     (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
     (run_dir / "capture" / "candidate-search").mkdir(parents=True, exist_ok=True)
     (run_dir / "validation").mkdir(parents=True, exist_ok=True)
 
-    spec, input_path = _load_spec(args)
-    candidates_model = normalize_candidates(spec, started_at)
     write_json(run_dir / "artifacts" / "candidates.json", candidates_model)
     write_text(run_dir / "artifacts" / "candidates.csv", render_candidates_csv(candidates_model["candidates"]))
     write_text(run_dir / "artifacts" / "candidate-review.md", render_candidate_review(candidates_model))
@@ -388,23 +438,22 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         quote_extraction_proceeded=False,
     )
     write_json(run_dir / "input.json", input_record)
-    candidate_report = validate_price_candidate_discovery_run(run_dir)
+    candidate_report, candidate_only_manifest = _converge_candidate_manifest(
+        run_dir,
+        run_id=run_id,
+        started_at=started_at,
+        input_record=input_record,
+    )
     write_json(run_dir / "validation" / "candidate-validation-report.json", candidate_report)
     _write_warnings(run_dir / "validation" / "warnings.md", candidate_report.get("warnings", []))
-    write_json(
-        run_dir / "manifest.json",
-        _base_manifest(run_id=run_id, started_at=started_at, input_record=input_record, candidate_report=candidate_report),
-    )
-    candidate_report = validate_price_candidate_discovery_run(run_dir)
-    write_json(run_dir / "validation" / "candidate-validation-report.json", candidate_report)
 
     if candidate_report.get("status") == "fail":
-        _merge_manifest(run_dir, input_record=input_record, candidate_report=candidate_report)
+        write_json(run_dir / "manifest.json", candidate_only_manifest)
         print(run_dir)
         return run_dir, True
 
     if not approved_sources:
-        _merge_manifest(run_dir, input_record=input_record, candidate_report=candidate_report)
+        write_json(run_dir / "manifest.json", candidate_only_manifest)
         print(run_dir)
         return run_dir, False
 
@@ -422,6 +471,16 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     }
     price_capture_input_path = run_dir / "capture" / "approved-candidates-price-input.json"
     write_json(price_capture_input_path, price_capture_input)
+    continuation_token = create_continuation_handoff(
+        run_dir,
+        run_id=run_id,
+        from_stage="price-candidate-discovery",
+        to_stage="price-capture",
+        input_path="capture/approved-candidates-price-input.json",
+        artifact_sha256={
+            "capture/approved-candidates-price-input.json": _sha256_file(price_capture_input_path),
+        },
+    )
 
     command = [
         sys.executable,
@@ -432,6 +491,9 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         str(output_root),
         "--run-id",
         run_id,
+        "--continue-existing-run",
+        f"--continuation-token={continuation_token}",
+        "--defer-manifest",
         "--min-urls",
         "1",
         "--max-urls",
@@ -439,16 +501,54 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
     ]
     completed = subprocess.run(command, cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
     if completed.returncode != 0:
+        failure_code = f"price_capture_runner_failed:{completed.returncode}"
+        blockers = list(dict.fromkeys(_strings(candidate_report.get("completion_blockers")) + [failure_code]))
+        warnings = list(dict.fromkeys(_strings(candidate_report.get("warnings")) + [failure_code]))
         candidate_report = {
             **candidate_report,
             "status": "fail",
-            "errors": list(candidate_report.get("errors", [])) + [completed.stderr.strip() or "price_capture_runner_failed"],
+            "errors": list(dict.fromkeys(_strings(candidate_report.get("errors")) + [failure_code])),
+            "warnings": warnings,
             "requires_manual_review": True,
             "run_status": "failed",
             "validation_status": "failed",
+            "manual_review": {
+                "required": True,
+                "severity": "blocking",
+                "reasons": [
+                    {
+                        "code": failure_code,
+                        "message": failure_code.replace("_", " "),
+                        "severity": "blocking",
+                        "artifact": "validation/candidate-validation-report.json",
+                    }
+                ],
+            },
+            "completion_blockers": blockers,
         }
         write_json(run_dir / "validation" / "candidate-validation-report.json", candidate_report)
-        _merge_manifest(run_dir, input_record=input_record, candidate_report=candidate_report)
+        _write_warnings(run_dir / "validation" / "warnings.md", warnings)
+        stage_manifest_path = run_dir / PRICE_CAPTURE_STAGE_MANIFEST
+        if stage_manifest_path.is_file() and (run_dir / "validation" / "price-validation-report.json").is_file():
+            failed_manifest = _build_merged_manifest(
+                read_json(stage_manifest_path),
+                input_record=input_record,
+                candidate_report=candidate_report,
+                price_report=read_json(run_dir / "validation" / "price-validation-report.json"),
+            )
+        else:
+            failed_manifest = _base_manifest(
+                run_id=run_id,
+                started_at=started_at,
+                input_record=input_record,
+                candidate_report=candidate_report,
+            )
+        manifest_errors = validate_manifest_paths(run_dir, failed_manifest) + validate_manifest_status(failed_manifest)
+        if manifest_errors:
+            raise RuntimeError(f"failed price-candidate manifest invalid: {manifest_errors}")
+        write_json(run_dir / "manifest.json", failed_manifest)
+        if stage_manifest_path.is_file():
+            stage_manifest_path.unlink()
         print(run_dir)
         return run_dir, True
 
@@ -463,22 +563,40 @@ def run(args: argparse.Namespace) -> tuple[Path, bool]:
         quote_extraction_proceeded=True,
     )
     write_json(run_dir / "input.json", input_record)
-    existing_price_report = read_json(run_dir / "validation" / "price-validation-report.json")
-    _merge_manifest(
-        run_dir,
-        input_record=input_record,
-        candidate_report=candidate_report,
-        price_report=existing_price_report,
-    )
-    candidate_report = validate_price_candidate_discovery_run(run_dir)
-    price_report = validate_price_compare_run(run_dir)
+    stage_manifest_path = run_dir / PRICE_CAPTURE_STAGE_MANIFEST
+    base_manifest = read_json(stage_manifest_path)
+    price_report = read_json(run_dir / "validation" / "price-validation-report.json")
+    final_manifest: dict[str, Any] | None = None
+    for _ in range(4):
+        candidate_manifest = _build_merged_manifest(
+            base_manifest,
+            input_record=input_record,
+            candidate_report=candidate_report,
+            price_report=price_report,
+        )
+        checked_candidate_report = validate_price_candidate_discovery_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+        )
+        checked_price_report = validate_price_compare_run(
+            run_dir,
+            manifest_override=candidate_manifest,
+        )
+        if checked_candidate_report == candidate_report and checked_price_report == price_report:
+            final_manifest = candidate_manifest
+            break
+        candidate_report = checked_candidate_report
+        price_report = checked_price_report
+    if final_manifest is None:
+        raise RuntimeError("price-candidate discovery manifest validation did not converge")
     write_json(run_dir / "validation" / "candidate-validation-report.json", candidate_report)
     write_json(run_dir / "validation" / "price-validation-report.json", price_report)
-    _merge_manifest(run_dir, input_record=input_record, candidate_report=candidate_report, price_report=price_report)
     _write_warnings(
         run_dir / "validation" / "warnings.md",
         list(dict.fromkeys(_strings(candidate_report.get("warnings")) + _strings(price_report.get("warnings")))),
     )
+    write_json(run_dir / "manifest.json", final_manifest)
+    stage_manifest_path.unlink()
     print(run_dir)
     return run_dir, False
 

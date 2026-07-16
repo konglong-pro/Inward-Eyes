@@ -19,8 +19,13 @@ def main() -> int:
     root = Path(args.root).resolve()
     output_dir = Path(args.output_dir).resolve()
     package_manifest = build_distribution_package(root, output_dir)
+    if package_manifest["validation"]["status"] != "pass":
+        for error in package_manifest["validation"]["errors"]:
+            print(error, file=sys.stderr)
+        print(output_dir / "package-manifest.json")
+        return 1
     print(output_dir / package_manifest["package"])
-    return 0 if package_manifest["validation"]["status"] == "pass" else 1
+    return 0
 
 
 if __name__ == "__main__":

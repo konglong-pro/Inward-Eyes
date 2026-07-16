@@ -44,6 +44,29 @@ def main() -> int:
     match = json.loads((OUTPUT_ROOT / "eval-site-profiles" / "artifacts" / "site-profile-match.json").read_text(encoding="utf-8"))
     if match.get("matched_profile_id") != "ecommerce_product":
         errors.append(f"unexpected profile match: {match.get('matched_profile_id')}")
+
+    invalid_profile = OUTPUT_ROOT / "invalid-profiles.json"
+    invalid_profile.write_text("{not-json", encoding="utf-8")
+    invalid_run_id = "eval-invalid-site-profiles"
+    invalid_completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "site_profile_runner.py"),
+            "--profile-file",
+            str(invalid_profile),
+            "--output-root",
+            str(OUTPUT_ROOT),
+            "--run-id",
+            invalid_run_id,
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if invalid_completed.returncode == 0:
+        errors.append("invalid profile JSON unexpectedly succeeded")
+    if (OUTPUT_ROOT / invalid_run_id).exists():
+        errors.append("invalid profile JSON left an orphan run directory")
     if errors:
         print("FAIL")
         for error in errors:

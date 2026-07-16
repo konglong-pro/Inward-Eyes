@@ -14,11 +14,21 @@ SCRIPT_ROOT = Path(__file__).resolve().parent
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from inward_eyes.io import read_json, utc_now, write_json, write_text  # noqa: E402
+from inward_eyes.io import read_json, utc_now, write_bytes, write_json, write_text  # noqa: E402
+from inward_eyes.capture import capture_admissibility_errors, screenshot_file_is_valid  # noqa: E402
+from inward_eyes.paths import (  # noqa: E402
+    create_continuation_handoff,
+    prepare_run_dir,
+    resolve_run_relative,
+    validate_run_id,
+    validate_source_id,
+)
 from inward_eyes.research import source_dir_name  # noqa: E402
 from inward_eyes.validation import validate_browser_research_run  # noqa: E402
 
-SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+RESEARCH_RENDER_STAGE_MANIFEST = "validation/browser-research-stage-manifest.json"
+RESEARCH_CAPTURE_STAGE_MANIFEST = "validation/research-capture-stage-manifest.json"
 
 
 def _slug_timestamp(timestamp: str) -> str:
@@ -50,6 +60,10 @@ def _sha256_file(path: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def _sha256_bytes(data: bytes) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()}"
+
+
 def _append_optional(command: list[str], flag: str, value: Any) -> None:
     if value is not None:
         command.extend([flag, str(value)])
@@ -60,10 +74,12 @@ def _append_repeated(command: list[str], flag: str, values: list[Any]) -> None:
         command.extend([flag, str(value)])
 
 
-def _load_spec(args: argparse.Namespace) -> dict[str, Any]:
+def _load_spec(args: argparse.Namespace, *, input_bytes: bytes | None = None) -> dict[str, Any]:
     spec: dict[str, Any] = {}
     if args.input:
-        loaded = read_json(Path(args.input).resolve())
+        if input_bytes is None:
+            input_bytes = Path(args.input).resolve().read_bytes()
+        loaded = json.loads(input_bytes.decode("utf-8"))
         if not isinstance(loaded, dict):
             raise SystemExit("M8 input JSON must be an object")
         spec.update(loaded)
@@ -110,6 +126,43 @@ def _source_screenshot_values(source: dict[str, Any]) -> list[str]:
     if source.get("screenshot"):
         return [str(source["screenshot"])]
     return []
+
+
+def _preflight_source_input(source: dict[str, Any], index: int) -> None:
+    validate_source_id(str(source.get("source_id") or f"S{index:03d}"))
+    _source_capture_backend(source)
+    for field in (
+        "url",
+        "capture_id",
+        "page_title",
+        "title",
+        "canonical_url",
+        "site_name",
+        "failure_reason",
+        "screenshot_reason",
+        "login_state",
+        "page_type",
+    ):
+        value = source.get(field)
+        if value is not None and "\x00" in str(value):
+            raise ValueError(f"source {index} {field} must not contain NUL")
+    for field in ("screenshots", "warnings", "actions", "redaction_notes"):
+        for value in _as_list(source.get(field)):
+            if "\x00" in str(value):
+                raise ValueError(f"source {index} {field} must not contain NUL")
+    if source.get("screenshot") is not None and "\x00" in str(source["screenshot"]):
+        raise ValueError(f"source {index} screenshot must not contain NUL")
+    for field in (
+        "html_file",
+        "text_file",
+        "selected_main_content_file",
+        "accessibility_snapshot_file",
+    ):
+        if source.get(field):
+            value = str(source[field])
+            if "\x00" in value:
+                raise ValueError(f"source {index} {field} must not contain NUL")
+            Path(value).resolve()
 
 
 def _write_observation_file(source_dir: Path, name: str, value: Any) -> str | None:
@@ -176,7 +229,12 @@ def _capture_command(
     _append_optional(command, "--html-file", html_file)
     _append_optional(command, "--text-file", text_file)
     _append_optional(command, "--selected-main-content-file", selected_file)
-    _append_optional(command, "--accessibility-snapshot-file", snapshot_file)
+    snapshot_flag = (
+        "--accessibility-snapshot-json"
+        if isinstance(source.get("accessibility_snapshot"), (dict, list))
+        else "--accessibility-snapshot-file"
+    )
+    _append_optional(command, snapshot_flag, snapshot_file)
 
     if backend == "public_url" and source.get("failure_reason"):
         _append_optional(command, "--failure-reason", source.get("failure_reason"))
@@ -208,7 +266,10 @@ def _capture_command(
 def _read_json_if_exists(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
-    loaded = read_json(path)
+    try:
+        loaded = read_json(path)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
     return loaded if isinstance(loaded, dict) else None
 
 
@@ -217,14 +278,26 @@ def _capture_asset_roots(capture_path: Path) -> list[Path]:
 
 
 def _resolve_capture_asset(raw_path: str, capture_path: Path) -> Path | None:
-    if not raw_path or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", raw_path):
+    if (
+        not raw_path
+        or "\x00" in raw_path
+        or "\\" in raw_path
+        or ":" in raw_path
+        or raw_path.startswith("/")
+        or any(part in {"", ".", ".."} for part in raw_path.split("/"))
+    ):
         return None
-    path = Path(raw_path)
-    if path.is_absolute():
-        return path.resolve() if path.exists() else None
+    path = Path(*raw_path.split("/"))
     for root in _capture_asset_roots(capture_path):
-        candidate = (root / path).resolve()
-        if candidate.exists():
+        try:
+            candidate = (root / path).resolve()
+        except OSError:
+            continue
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            continue
+        if candidate.is_file():
             return candidate
     return None
 
@@ -251,12 +324,16 @@ def _stage_source_screenshots(
             warnings.append(f"{source_id}:screenshot_asset_invalid:{index}")
             continue
         source_path = _resolve_capture_asset(raw_path, capture_path)
-        if source_path is None:
+        if source_path is None or not screenshot_file_is_valid(source_path):
             warnings.append(f"{source_id}:screenshot_asset_missing:{raw_path}")
             continue
         destination = run_dir / "evidence" / source_dir_name(source_id) / "screenshots" / _safe_asset_name(raw_path, index)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_path, destination)
+        write_bytes(destination, source_path.read_bytes())
+        if not screenshot_file_is_valid(destination):
+            destination.unlink(missing_ok=True)
+            warnings.append(f"{source_id}:screenshot_asset_copy_invalid:{raw_path}")
+            continue
         staged.append(
             {
                 "type": "screenshot",
@@ -405,17 +482,16 @@ def _augment_validation_report(
     return augmented
 
 
-def _augment_manifest(
-    run_dir: Path,
+def _build_augmented_manifest(
+    base_manifest: dict[str, Any],
     *,
     input_record: dict[str, Any],
     capture_evidence: list[dict[str, Any]],
     screenshot_evidence: list[dict[str, Any]],
     validation_report: dict[str, Any],
     warnings: list[str],
-) -> None:
-    manifest_path = run_dir / "manifest.json"
-    manifest = read_json(manifest_path)
+) -> dict[str, Any]:
+    manifest = dict(base_manifest)
     evidence = list(manifest.get("evidence") or [])
     seen_paths = {item.get("path") for item in evidence if isinstance(item, dict)}
     for item in capture_evidence + screenshot_evidence:
@@ -438,25 +514,54 @@ def _augment_manifest(
         "report_path": "validation/claim-coverage-report.json",
         "missing_sources_path": "validation/missing-sources.md",
     }
-    write_json(manifest_path, manifest)
+    manifest["finished_at"] = utc_now()
+    return manifest
 
 
 def run(args: argparse.Namespace) -> Path:
     started_at = utc_now()
-    run_id = args.run_id or f"{_slug_timestamp(started_at)}-research-capture"
+    run_id = validate_run_id(args.run_id or f"{_slug_timestamp(started_at)}-research-capture")
     output_root = Path(args.output_root or "browser-operator-runs").resolve()
-    run_dir = output_root / run_id
-    (run_dir / "capture").mkdir(parents=True, exist_ok=True)
-    (run_dir / "evidence").mkdir(parents=True, exist_ok=True)
-    (run_dir / "validation").mkdir(parents=True, exist_ok=True)
-
-    spec = _load_spec(args)
+    expected_run_dir = resolve_run_relative(output_root, run_id)
+    continue_existing = bool(getattr(args, "continue_existing_run", False))
+    defer_manifest = bool(getattr(args, "defer_manifest", False))
+    if continue_existing and not defer_manifest:
+        raise SystemExit("authenticated continuation requires --defer-manifest")
+    if defer_manifest and not continue_existing:
+        raise SystemExit("deferred research-capture manifest requires authenticated continuation")
+    input_path = Path(args.input).resolve() if args.input else None
+    input_bytes = input_path.read_bytes() if input_path is not None else None
+    spec = _load_spec(args, input_bytes=input_bytes)
     question = str(spec.get("question") or "").strip()
     if not question:
         raise SystemExit("M8 requires a research question")
     topic = str(spec.get("topic") or question)
     sources = [source for source in _as_list(spec.get("sources")) if isinstance(source, dict)]
     _validate_source_scope(sources, min_sources=args.min_sources, max_sources=args.max_sources)
+    for index, source in enumerate(sources, start=1):
+        _preflight_source_input(source, index)
+    if continue_existing and (
+        input_path is None
+        or input_path != (expected_run_dir / "capture" / "discovery-selected-sources.json").resolve()
+    ):
+        raise SystemExit("continued research capture must consume capture/discovery-selected-sources.json")
+    run_dir = prepare_run_dir(
+        output_root,
+        run_id,
+        continue_existing=continue_existing,
+        continuation_required_paths=("capture/discovery-selected-sources.json",) if continue_existing else (),
+        continuation_token=getattr(args, "continuation_token", None),
+        continuation_stage="research-capture" if continue_existing else None,
+        continuation_input_path="capture/discovery-selected-sources.json" if continue_existing else None,
+        continuation_artifact_sha256=(
+            {"capture/discovery-selected-sources.json": _sha256_bytes(input_bytes)}
+            if continue_existing and input_bytes is not None
+            else None
+        ),
+    )
+    (run_dir / "capture").mkdir(parents=True, exist_ok=True)
+    (run_dir / "evidence").mkdir(parents=True, exist_ok=True)
+    (run_dir / "validation").mkdir(parents=True, exist_ok=True)
 
     adapter_stage_root = run_dir / "capture" / "_adapter-stage"
     source_summaries: list[dict[str, Any]] = []
@@ -464,17 +569,19 @@ def run(args: argparse.Namespace) -> Path:
     screenshot_evidence: list[dict[str, Any]] = []
     capture_warnings: list[str] = []
     capture_failures: list[str] = []
+    admissible_source_count = 0
 
     try:
         for index, source in enumerate(sources[: args.max_sources], start=1):
-            source_id = str(source.get("source_id") or f"S{index:03d}")
+            source_id = validate_source_id(str(source.get("source_id") or f"S{index:03d}"))
             source_dir = run_dir / "capture" / source_dir_name(source_id)
             source_dir.mkdir(parents=True, exist_ok=True)
+            adapter_input_dir = adapter_stage_root / "_inputs" / source_dir_name(source_id)
             command = _capture_command(
                 source=source,
                 source_index=index,
                 adapter_output_root=adapter_stage_root,
-                final_source_dir=source_dir,
+                final_source_dir=adapter_input_dir,
             )
             completed = subprocess.run(command, cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
             adapter_run_dir = adapter_stage_root / f"source-{index:03d}"
@@ -484,20 +591,32 @@ def run(args: argparse.Namespace) -> Path:
             final_report_path = source_dir / "capture-validation-report.json"
             capture = _read_json_if_exists(adapter_capture_path)
             capture_report = _read_json_if_exists(adapter_report_path)
+            adapter_manifest = _read_json_if_exists(adapter_run_dir / "validation" / "capture-stage-manifest.json")
             source_warnings: list[str] = []
-            if capture:
-                write_json(final_capture_path, capture)
+            admissibility_errors = capture_admissibility_errors(
+                capture=capture,
+                report=capture_report,
+                manifest=adapter_manifest,
+                returncode=completed.returncode,
+                run_dir=adapter_run_dir,
+                expected_run_id=f"source-{index:03d}",
+            )
+            admissible_capture = capture if not admissibility_errors else None
+            admissible_report = capture_report if admissible_capture is not None else None
+            if admissible_capture is not None:
+                admissible_source_count += 1
+                write_json(final_capture_path, admissible_capture)
                 capture_evidence.append(
                     {
                         "id": f"C{index:03d}",
                         "type": "page_capture",
                         "path": final_capture_path.relative_to(run_dir).as_posix(),
-                        "url": capture.get("source", {}).get("url"),
-                        "captured_at": capture.get("captured_at"),
+                        "url": admissible_capture.get("source", {}).get("url"),
+                        "captured_at": admissible_capture.get("captured_at"),
                     }
                 )
                 staged_screenshots = _stage_source_screenshots(
-                    capture=capture,
+                    capture=admissible_capture,
                     capture_path=adapter_capture_path,
                     run_dir=run_dir,
                     source_id=source_id,
@@ -515,20 +634,24 @@ def run(args: argparse.Namespace) -> Path:
                     )
             else:
                 staged_screenshots = []
-                failure_code = f"{source_id}:capture_failed"
-                capture_failures.append(failure_code)
-                source_warnings.append(failure_code)
-            if capture_report:
-                write_json(final_report_path, capture_report)
-            if completed.returncode != 0 and not capture:
-                source_warnings.append(f"{source_id}:adapter_returncode:{completed.returncode}")
+            if admissibility_errors:
+                staged_screenshots = []
+                generic_failure = f"{source_id}:capture_failed"
+                capture_failures.append(generic_failure)
+                source_warnings.append(generic_failure)
+                for error in admissibility_errors:
+                    failure_code = f"{source_id}:{error}"
+                    capture_failures.append(failure_code)
+                    source_warnings.append(failure_code)
+            if admissible_report is not None:
+                write_json(final_report_path, admissible_report)
             capture_warnings.extend(source_warnings)
             source_summaries.append(
                 _source_summary_from_capture(
                     source=source,
                     source_id=source_id,
-                    capture=capture,
-                    capture_report=capture_report,
+                    capture=admissible_capture,
+                    capture_report=admissible_report,
                     staged_screenshots=staged_screenshots,
                     source_warnings=source_warnings,
                     accessed_at=started_at,
@@ -557,6 +680,29 @@ def run(args: argparse.Namespace) -> Path:
     }
     research_input_path = run_dir / "capture" / "research-input.json"
     write_json(research_input_path, research_input)
+    input_record = {
+        "input_path": str(args.input) if args.input else None,
+        "generated_research_input": "capture/research-input.json",
+        "topic": topic,
+        "question": question,
+        "approved_source_urls": [source.get("url") for source in sources],
+        "source_count": len(sources),
+        "captured_source_count": admissible_source_count,
+        "max_sources": args.max_sources,
+        "workflow": "browser-research",
+        "capture_stage": "provided_url_browser_capture",
+    }
+    write_json(run_dir / "input.json", input_record)
+    continuation_token = create_continuation_handoff(
+        run_dir,
+        run_id=run_id,
+        from_stage="research-capture",
+        to_stage="browser-research-render",
+        input_path="capture/research-input.json",
+        artifact_sha256={
+            "capture/research-input.json": _sha256_file(research_input_path),
+        },
+    )
 
     runner_command = [
         sys.executable,
@@ -567,68 +713,107 @@ def run(args: argparse.Namespace) -> Path:
         str(output_root),
         "--run-id",
         run_id,
+        "--continue-existing-run",
+        f"--continuation-token={continuation_token}",
+        "--defer-manifest",
     ]
     completed_runner = subprocess.run(runner_command, cwd=Path(__file__).resolve().parents[1], text=True, capture_output=True)
     if completed_runner.returncode != 0:
+        failure_code = f"browser_research_renderer_failed:{completed_runner.returncode}"
+        blockers = [failure_code]
+        failed_report = {
+            "schema_version": "1.0",
+            "status": "fail",
+            "errors": blockers,
+            "warnings": list(dict.fromkeys(warnings + blockers)),
+            "requires_manual_review": True,
+            "run_status": "failed",
+            "validation_status": "failed",
+            "manual_review": {
+                "required": True,
+                "severity": "blocking",
+                "reasons": [_manual_review_reason(failure_code, "blocking")],
+            },
+            "completion_blockers": blockers,
+            "screenshot_policy": {"required": False, "reason": "per_source_policy", "status": "capture_failed"},
+        }
+        write_json(run_dir / "validation" / "claim-coverage-report.json", failed_report)
+        write_text(run_dir / "validation" / "missing-sources.md", "# Missing Sources\n\nResearch rendering failed.\n")
+        _write_warnings(run_dir / "validation" / "warnings.md", failed_report["warnings"])
+        manifest_output = RESEARCH_CAPTURE_STAGE_MANIFEST if defer_manifest else "manifest.json"
+        write_json(
+            resolve_run_relative(run_dir, manifest_output),
+            {
+                "run_id": run_id,
+                "task": "browser-research",
+                "started_at": started_at,
+                "finished_at": utc_now(),
+                "operator": "codex",
+                "skill": "browser-research",
+                "inputs": input_record,
+                "artifacts": [],
+                "evidence": capture_evidence
+                + screenshot_evidence
+                + [{"id": "RI001", "type": "research_input", "path": "capture/research-input.json"}],
+                "validation": {
+                    "schema_valid": False,
+                    "warnings": len(failed_report["warnings"]),
+                    "requires_manual_review": True,
+                    "report_path": "validation/claim-coverage-report.json",
+                    "missing_sources_path": "validation/missing-sources.md",
+                },
+                "warnings": failed_report["warnings"],
+                "requires_manual_review": True,
+                "run_status": "failed",
+                "validation_status": "failed",
+                "manual_review": failed_report["manual_review"],
+                "completion_blockers": blockers,
+                "screenshot_policy": failed_report["screenshot_policy"],
+            },
+        )
         raise SystemExit(completed_runner.stderr.strip() or "browser_research_runner.py failed")
-
     validation_path = run_dir / "validation" / "claim-coverage-report.json"
-    validation_report = read_json(validation_path)
+    stage_manifest_path = resolve_run_relative(run_dir, RESEARCH_RENDER_STAGE_MANIFEST, must_exist=True)
+    base_manifest = read_json(stage_manifest_path)
     augmented_report = _augment_validation_report(
-        validation_report,
+        read_json(validation_path),
         capture_warnings=list(dict.fromkeys(capture_warnings)),
         capture_failures=list(dict.fromkeys(capture_failures)),
-        captured_source_count=len(capture_evidence),
+        captured_source_count=admissible_source_count,
     )
+    final_manifest: dict[str, Any] | None = None
+    for _ in range(4):
+        candidate_manifest = _build_augmented_manifest(
+            base_manifest,
+            input_record=input_record,
+            capture_evidence=capture_evidence
+            + [{"id": "RI001", "type": "research_input", "path": "capture/research-input.json"}],
+            screenshot_evidence=screenshot_evidence,
+            validation_report=augmented_report,
+            warnings=list(dict.fromkeys(warnings)),
+        )
+        checked_report = _augment_validation_report(
+            validate_browser_research_run(run_dir, manifest_override=candidate_manifest),
+            capture_warnings=list(dict.fromkeys(capture_warnings)),
+            capture_failures=list(dict.fromkeys(capture_failures)),
+            captured_source_count=admissible_source_count,
+        )
+        if checked_report == augmented_report:
+            final_manifest = candidate_manifest
+            break
+        augmented_report = checked_report
+    if final_manifest is None:
+        raise RuntimeError("research-capture manifest validation did not converge")
     write_json(validation_path, augmented_report)
-    final_validation_report = validate_browser_research_run(run_dir)
-    augmented_report = _augment_validation_report(
-        final_validation_report,
-        capture_warnings=list(dict.fromkeys(capture_warnings)),
-        capture_failures=list(dict.fromkeys(capture_failures)),
-        captured_source_count=len(capture_evidence),
+    _write_warnings(
+        run_dir / "validation" / "warnings.md",
+        list(dict.fromkeys(warnings + augmented_report.get("warnings", []))),
     )
-    write_json(validation_path, augmented_report)
-    _write_warnings(run_dir / "validation" / "warnings.md", list(dict.fromkeys(warnings + augmented_report.get("warnings", []))))
-
-    input_record = {
-        "input_path": str(args.input) if args.input else None,
-        "generated_research_input": "capture/research-input.json",
-        "topic": topic,
-        "question": question,
-        "approved_source_urls": [source.get("url") for source in sources],
-        "source_count": len(sources),
-        "captured_source_count": len(capture_evidence),
-        "max_sources": args.max_sources,
-        "workflow": "browser-research",
-        "capture_stage": "provided_url_browser_capture",
-    }
-    write_json(run_dir / "input.json", input_record)
-    _augment_manifest(
-        run_dir,
-        input_record=input_record,
-        capture_evidence=capture_evidence + [{"id": "RI001", "type": "research_input", "path": "capture/research-input.json"}],
-        screenshot_evidence=screenshot_evidence,
-        validation_report=augmented_report,
-        warnings=list(dict.fromkeys(warnings)),
-    )
-    final_validation_report = validate_browser_research_run(run_dir)
-    augmented_report = _augment_validation_report(
-        final_validation_report,
-        capture_warnings=list(dict.fromkeys(capture_warnings)),
-        capture_failures=list(dict.fromkeys(capture_failures)),
-        captured_source_count=len(capture_evidence),
-    )
-    write_json(validation_path, augmented_report)
-    _augment_manifest(
-        run_dir,
-        input_record=input_record,
-        capture_evidence=capture_evidence + [{"id": "RI001", "type": "research_input", "path": "capture/research-input.json"}],
-        screenshot_evidence=screenshot_evidence,
-        validation_report=augmented_report,
-        warnings=list(dict.fromkeys(warnings)),
-    )
-    _write_warnings(run_dir / "validation" / "warnings.md", list(dict.fromkeys(warnings + augmented_report.get("warnings", []))))
+    manifest_output = RESEARCH_CAPTURE_STAGE_MANIFEST if defer_manifest else "manifest.json"
+    manifest_output_path = resolve_run_relative(run_dir, manifest_output)
+    write_json(manifest_output_path, final_manifest)
+    if stage_manifest_path != manifest_output_path:
+        stage_manifest_path.unlink()
     print(run_dir)
     return run_dir
 
@@ -646,6 +831,9 @@ def main() -> int:
     parser.add_argument("--run-id")
     parser.add_argument("--max-sources", type=int, default=10)
     parser.add_argument("--min-sources", type=int, default=2)
+    parser.add_argument("--continue-existing-run", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--continuation-token", help=argparse.SUPPRESS)
+    parser.add_argument("--defer-manifest", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     run(args)
     return 0

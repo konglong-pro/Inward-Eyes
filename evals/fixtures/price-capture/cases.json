@@ -42,10 +42,9 @@
   {
     "name": "missing-screenshot-fails",
     "input": "missing-screenshot-fails.json",
-    "expected_status": "fail",
-    "expected_run_status": "failed",
-    "expected_lowest": "Q001",
-    "required_error_terms": ["screenshot_required_but_missing"]
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "expected_lowest": "Q001"
   },
   {
     "name": "out-of-stock-excluded",

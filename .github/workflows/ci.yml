@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,6 +45,9 @@ jobs:
           scripts/validation/validate_page_to_md.py
           scripts/validation/validate_page_capture.py
           scripts/validation/validate_json_schema.py
+          scripts/validation/validate_contract_drift.py
+          scripts/validation/validate_plugin.py
+          scripts/validation/validate_release.py
           scripts/validation/classify_browser_action.py
           scripts/validation/validate_research_discovery.py
           scripts/validation/validate_browser_research.py
@@ -52,6 +57,7 @@ jobs:
           scripts/inward_eyes/capture.py
           scripts/inward_eyes/html_extract.py
           scripts/inward_eyes/io.py
+          scripts/inward_eyes/paths.py
           scripts/inward_eyes/markdown.py
           scripts/inward_eyes/safety.py
           scripts/inward_eyes/discovery.py
@@ -86,6 +92,23 @@ jobs:
           evals/run_distribution_eval.py
           evals/run_batch_retry_eval.py
           evals/run_export_eval.py
+
+      - name: Check pull request patch whitespace
+        if: github.event_name == 'pull_request'
+        run: git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
+
+      - name: Check pushed commit whitespace
+        if: github.event_name == 'push'
+        run: git show --check --format= HEAD
+
+      - name: Check page contract drift
+        run: python scripts/validation/validate_contract_drift.py
+
+      - name: Validate plugin portably
+        run: python scripts/validation/validate_plugin.py .
+
+      - name: Validate release inputs
+        run: python scripts/validation/validate_release.py .
 
       - name: Run page-to-md evals
         run: python evals/run_eval.py
@@ -135,6 +158,9 @@ jobs:
       - name: Run distribution evals
         run: python evals/run_distribution_eval.py
 
+      - name: Build explicit package dry-run
+        run: python scripts/plugin_package.py --output-dir evals/.tmp/ci-package
+
       - name: Run batch and retry evals
         run: python evals/run_batch_retry_eval.py
 
@@ -145,11 +171,15 @@ jobs:
         run: |
           python scripts/validation/validate_json_schema.py --schema schemas/site_profiles.schema.json --json profiles/site_profiles.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_to_md_metadata.schema.json --json evals/.tmp/page-to-md/eval-public-article/artifacts/metadata.json
+          python scripts/validation/validate_json_schema.py --schema schemas/document_ast.schema.json --json evals/.tmp/page-to-md/eval-public-article/artifacts/document_ast.json
+          python scripts/validation/validate_json_schema.py --schema schemas/source_record.schema.json --json evals/.tmp/page-to-md/eval-public-article/evidence/source_record.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_capture.schema.json --json evals/.tmp/capture-adapter/valid-capture/capture/page_capture.json
           python scripts/validation/validate_json_schema.py --schema schemas/page_capture.schema.json --json evals/.tmp/capture-adapter/current-chrome-output/eval-current-chrome-logged-in/capture/page_capture.json
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/page-to-md/eval-public-article/manifest.json
           python scripts/validation/validate_json_schema.py --schema schemas/validation_report.schema.json --json evals/.tmp/page-to-md/eval-public-article/validation/validation-report.json
           python scripts/validation/validate_json_schema.py --schema schemas/research_report.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/artifacts/claims.json
+          python scripts/validation/validate_json_schema.py --schema schemas/research_claim.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/artifacts/claims.json --pointer /claims/0
+          python scripts/validation/validate_json_schema.py --schema schemas/source_record.schema.json --json evals/.tmp/browser-research/eval-evidence-backed-research/evidence/source-001/source_record.json
           python scripts/validation/validate_json_schema.py --schema schemas/research_discovery_input.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/input.json
           python scripts/validation/validate_json_schema.py --schema schemas/discovery_log.schema.json --json evals/.tmp/research-discovery/eval-bounded-three-sources/artifacts/discovery-log.json
           python scripts/validation/validate_json_schema.py --schema schemas/research_report.schema.json --json evals/.tmp/research-capture/eval-two-source-supported/artifacts/claims.json
@@ -166,6 +196,7 @@ jobs:
           python scripts/validation/validate_json_schema.py --schema schemas/price_compare_run.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/artifacts/prices.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_compare_run.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/artifacts/prices.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-compare/eval-product-quotes/artifacts/prices.json --pointer /quotes/0
+          python scripts/validation/validate_json_schema.py --schema schemas/source_record.schema.json --json evals/.tmp/price-compare/eval-product-quotes/evidence/source-001/source_record.json
           python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap/artifacts/prices.json --pointer /quotes/0
           python scripts/validation/validate_json_schema.py --schema schemas/price_record.schema.json --json evals/.tmp/price-capture/eval-two-matching-product-urls/artifacts/prices.json --pointer /quotes/0
           python scripts/validation/validate_json_schema.py --schema schemas/run_manifest.schema.json --json evals/.tmp/price-compare/eval-product-quotes/manifest.json
@@ -179,6 +210,7 @@ jobs:
       - name: Validate run directories
         run: |
           python scripts/validation/validate_page_to_md.py evals/.tmp/page-to-md/eval-public-article
+          python scripts/validation/validate_page_capture.py evals/.tmp/capture-adapter/current-chrome-output/eval-current-chrome-logged-in/capture/page_capture.json
           python scripts/validation/validate_browser_research.py evals/.tmp/browser-research/eval-evidence-backed-research
           python scripts/validation/validate_research_discovery.py evals/.tmp/research-discovery/eval-bounded-three-sources
           python scripts/validation/validate_browser_research.py evals/.tmp/research-discovery/eval-bounded-three-sources
@@ -187,3 +219,8 @@ jobs:
           python scripts/validation/validate_price_candidate_discovery.py evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap
           python scripts/validation/validate_price_compare.py evals/.tmp/price-candidate-discovery/eval-matching-candidates-within-cap
           python scripts/validation/validate_price_compare.py evals/.tmp/price-capture/eval-two-matching-product-urls
+
+      - name: Check generated steps kept tracked sources clean
+        run: |
+          git diff --check
+          git diff --exit-code

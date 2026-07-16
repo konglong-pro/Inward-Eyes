@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import ipaddress
+import json
+import os
 import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from inward_eyes.io import utc_now, write_json, write_text
+from inward_eyes.io import read_json, utc_now, write_json, write_text
+from inward_eyes.paths import CONTINUATION_HANDOFF_PATH, resolve_run_relative, validate_run_id
 
 LOGIN_STATES = {"confirmed", "suspected", "not_required", "unknown"}
 SCREENSHOT_STATUSES = {
@@ -51,10 +56,140 @@ PROMPT_INJECTION_PATTERNS = (
 PRIVATE_PATTERNS = (
     ("email_address", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
 )
+SCREENSHOT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+CAPTURE_STAGE_MANIFEST_PATH = "validation/capture-stage-manifest.json"
+PAGE_WORKFLOW_OWNERSHIP_PATH = ".inward-eyes-page-workflow-owner.json"
+CAPTURE_REPORT_REQUIRED_FIELDS = {
+    "schema_version",
+    "status",
+    "errors",
+    "warnings",
+    "requires_manual_review",
+    "run_status",
+    "validation_status",
+    "manual_review",
+    "completion_blockers",
+    "screenshot_policy",
+}
+OWNERSHIP_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
+CAPTURE_ADMISSION_PATHS = (
+    "capture/page_capture.json",
+    "validation/capture-validation-report.json",
+    CAPTURE_STAGE_MANIFEST_PATH,
+)
 
 
 def _review_reasons(codes: list[str], severity: str, artifact: str) -> list[dict[str, str]]:
     return [{"code": code, "message": code.replace("_", " "), "severity": severity, "artifact": artifact} for code in codes]
+
+
+def screenshot_file_is_valid(path: Path) -> bool:
+    if not path.is_file() or path.suffix.lower() not in SCREENSHOT_EXTENSIONS:
+        return False
+    try:
+        header = path.read_bytes()[:12]
+    except OSError:
+        return False
+    suffix = path.suffix.lower()
+    if suffix == ".png":
+        return header.startswith(b"\x89PNG\r\n\x1a\n")
+    if suffix in {".jpg", ".jpeg"}:
+        return header.startswith(b"\xff\xd8\xff")
+    if suffix == ".gif":
+        return header.startswith((b"GIF87a", b"GIF89a"))
+    return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+
+
+def _ownership_token_sha256(ownership_token: str) -> str:
+    if not isinstance(ownership_token, str) or not OWNERSHIP_TOKEN_PATTERN.fullmatch(ownership_token):
+        raise ValueError("workflow ownership token must be 32-256 URL-safe characters")
+    return hashlib.sha256(ownership_token.encode("utf-8")).hexdigest()
+
+
+def claim_page_workflow_ownership(
+    run_dir: Path,
+    *,
+    run_id: str,
+    ownership_token: str | None,
+) -> None:
+    if ownership_token is None:
+        return
+    safe_run_id = validate_run_id(run_id)
+    token_sha256 = _ownership_token_sha256(ownership_token)
+    if run_dir.is_symlink() or not run_dir.is_dir() or run_dir.name != safe_run_id:
+        raise ValueError("workflow ownership can only be claimed for the newly created run directory")
+    marker_path = run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH
+    payload = json.dumps(
+        {
+            "schema_version": "1.0",
+            "run_id": safe_run_id,
+            "token_sha256": token_sha256,
+        },
+        ensure_ascii=False,
+        indent=2,
+    ) + "\n"
+    handle = marker_path.open("x", encoding="utf-8", newline="\n")
+    try:
+        with handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        marker_path.unlink(missing_ok=True)
+        raise
+
+
+def page_workflow_ownership_matches(
+    run_dir: Path,
+    *,
+    run_id: str,
+    ownership_token: str,
+) -> bool:
+    try:
+        safe_run_id = validate_run_id(run_id)
+        token_sha256 = _ownership_token_sha256(ownership_token)
+    except ValueError:
+        return False
+    if run_dir.is_symlink() or not run_dir.is_dir() or run_dir.name != safe_run_id:
+        return False
+    marker_path = run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH
+    if marker_path.is_symlink() or not marker_path.is_file():
+        return False
+    try:
+        marker = read_json(marker_path)
+    except (OSError, ValueError):
+        return False
+    return (
+        isinstance(marker, dict)
+        and marker.get("schema_version") == "1.0"
+        and marker.get("run_id") == safe_run_id
+        and isinstance(marker.get("token_sha256"), str)
+        and hmac.compare_digest(marker["token_sha256"], token_sha256)
+    )
+
+
+def release_page_workflow_ownership(
+    run_dir: Path,
+    *,
+    run_id: str,
+    ownership_token: str,
+) -> bool:
+    if not page_workflow_ownership_matches(
+        run_dir,
+        run_id=run_id,
+        ownership_token=ownership_token,
+    ):
+        return False
+    (run_dir / PAGE_WORKFLOW_OWNERSHIP_PATH).unlink(missing_ok=True)
+    return True
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _status_fields(errors: list[str], warnings: list[str], manual_review: bool) -> dict[str, Any]:
@@ -301,7 +436,10 @@ def _screenshot_required_reasons(capture: dict[str, Any]) -> list[str]:
     source = capture.get("source") if isinstance(capture.get("source"), dict) else {}
     browser_context = capture.get("browser_context") if isinstance(capture.get("browser_context"), dict) else {}
     privacy = capture.get("privacy") if isinstance(capture.get("privacy"), dict) else {}
-    warnings = set(capture.get("warnings") or [])
+    raw_warnings = capture.get("warnings")
+    warnings = set(raw_warnings) if isinstance(raw_warnings, list) and all(
+        isinstance(item, str) for item in raw_warnings
+    ) else set()
     page_type = source.get("page_type")
 
     if source.get("requires_login") or browser_context.get("login_state") in {"confirmed", "suspected"}:
@@ -315,9 +453,223 @@ def _screenshot_required_reasons(capture: dict[str, Any]) -> list[str]:
     return list(dict.fromkeys(reasons))
 
 
-def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
+def _page_capture_shape_errors(capture: Any) -> list[str]:
+    if not isinstance(capture, dict):
+        return ["schema:$:expected_object"]
+
     errors: list[str] = []
-    warnings: list[str] = list(dict.fromkeys(capture.get("warnings") or []))
+
+    def require_fields(value: dict[str, Any], fields: tuple[str, ...], path: str) -> None:
+        for field in fields:
+            if field not in value:
+                errors.append(f"schema:{path}.{field}:missing_required_key")
+
+    def require_string(value: Any, path: str, *, non_empty: bool = False) -> None:
+        if not isinstance(value, str):
+            errors.append(f"schema:{path}:expected_string")
+        elif non_empty and not value:
+            errors.append(f"schema:{path}:empty_string")
+
+    def require_nullable_string(value: Any, path: str) -> None:
+        if value is not None and not isinstance(value, str):
+            errors.append(f"schema:{path}:expected_string_or_null")
+
+    def require_bool(value: Any, path: str) -> None:
+        if not isinstance(value, bool):
+            errors.append(f"schema:{path}:expected_boolean")
+
+    def require_string_list(value: Any, path: str) -> None:
+        if not isinstance(value, list):
+            errors.append(f"schema:{path}:expected_array")
+            return
+        for index, item in enumerate(value):
+            if not isinstance(item, str):
+                errors.append(f"schema:{path}[{index}]:expected_string")
+
+    require_fields(
+        capture,
+        (
+            "schema_version",
+            "capture_id",
+            "captured_at",
+            "capture_method",
+            "login_state",
+            "contains_private_data",
+            "redaction_applied",
+            "redaction_notes",
+            "source",
+            "browser_context",
+            "content",
+            "assets",
+            "privacy",
+            "screenshot_policy",
+            "warnings",
+        ),
+        "$",
+    )
+    if "schema_version" in capture:
+        require_string(capture["schema_version"], "$.schema_version")
+    if "capture_id" in capture:
+        require_string(capture["capture_id"], "$.capture_id", non_empty=True)
+    if "captured_at" in capture:
+        require_string(capture["captured_at"], "$.captured_at", non_empty=True)
+    if "capture_method" in capture:
+        require_string(capture["capture_method"], "$.capture_method", non_empty=True)
+    if "login_state" in capture:
+        if not isinstance(capture["login_state"], str) or capture["login_state"] not in LOGIN_STATES:
+            errors.append("schema:$.login_state:invalid_enum")
+    if "contains_private_data" in capture:
+        require_bool(capture["contains_private_data"], "$.contains_private_data")
+    if "redaction_applied" in capture:
+        require_bool(capture["redaction_applied"], "$.redaction_applied")
+    if "redaction_notes" in capture:
+        require_string_list(capture["redaction_notes"], "$.redaction_notes")
+    if "warnings" in capture:
+        require_string_list(capture["warnings"], "$.warnings")
+    for field in ("document", "document_ast"):
+        if field in capture and not isinstance(capture[field], dict):
+            errors.append(f"schema:$.{field}:expected_object")
+
+    source = capture.get("source")
+    if not isinstance(source, dict):
+        if "source" in capture:
+            errors.append("schema:$.source:expected_object")
+    else:
+        require_fields(source, ("url", "page_title", "requires_login"), "$.source")
+        if "url" in source:
+            require_string(source["url"], "$.source.url", non_empty=True)
+        if "page_title" in source:
+            require_string(source["page_title"], "$.source.page_title", non_empty=True)
+        if "requires_login" in source:
+            require_bool(source["requires_login"], "$.source.requires_login")
+        if "canonical_url" in source:
+            require_nullable_string(source["canonical_url"], "$.source.canonical_url")
+        if "site_name" in source:
+            require_nullable_string(source["site_name"], "$.source.site_name")
+
+    browser_context = capture.get("browser_context")
+    if not isinstance(browser_context, dict):
+        if "browser_context" in capture:
+            errors.append("schema:$.browser_context:expected_object")
+    else:
+        require_fields(browser_context, ("tool", "login_state"), "$.browser_context")
+        if "tool" in browser_context:
+            require_string(browser_context["tool"], "$.browser_context.tool", non_empty=True)
+        if "login_state" in browser_context:
+            if (
+                not isinstance(browser_context["login_state"], str)
+                or browser_context["login_state"] not in LOGIN_STATES
+            ):
+                errors.append("schema:$.browser_context.login_state:invalid_enum")
+        if "user_visible_profile" in browser_context:
+            require_bool(browser_context["user_visible_profile"], "$.browser_context.user_visible_profile")
+        if "region_or_locale" in browser_context:
+            require_nullable_string(browser_context["region_or_locale"], "$.browser_context.region_or_locale")
+        if "viewport" in browser_context and browser_context["viewport"] is not None and not isinstance(
+            browser_context["viewport"], dict
+        ):
+            errors.append("schema:$.browser_context.viewport:expected_object_or_null")
+
+    content = capture.get("content")
+    if not isinstance(content, dict):
+        if "content" in capture:
+            errors.append("schema:$.content:expected_object")
+    else:
+        require_fields(
+            content,
+            ("html", "text", "accessibility_snapshot", "selected_main_content"),
+            "$.content",
+        )
+        for field in ("html", "text", "selected_main_content"):
+            if field in content:
+                require_nullable_string(content[field], f"$.content.{field}")
+        if "accessibility_snapshot" in content and content["accessibility_snapshot"] is not None and not isinstance(
+            content["accessibility_snapshot"], (dict, list, str)
+        ):
+            errors.append(
+                "schema:$.content.accessibility_snapshot:expected_object_array_string_or_null"
+            )
+
+    assets = capture.get("assets")
+    if not isinstance(assets, dict):
+        if "assets" in capture:
+            errors.append("schema:$.assets:expected_object")
+    else:
+        require_fields(assets, ("screenshots", "images"), "$.assets")
+        screenshots = assets.get("screenshots")
+        if not isinstance(screenshots, list):
+            if "screenshots" in assets:
+                errors.append("schema:$.assets.screenshots:expected_array")
+        else:
+            for index, screenshot in enumerate(screenshots):
+                path = f"$.assets.screenshots[{index}]"
+                if not isinstance(screenshot, dict):
+                    errors.append(f"schema:{path}:expected_object")
+                    continue
+                require_fields(screenshot, ("path",), path)
+                if "path" in screenshot:
+                    require_string(screenshot["path"], f"{path}.path", non_empty=True)
+                if "captured_at" in screenshot:
+                    require_nullable_string(screenshot["captured_at"], f"{path}.captured_at")
+        if "images" in assets and not isinstance(assets["images"], list):
+            errors.append("schema:$.assets.images:expected_array")
+
+    privacy = capture.get("privacy")
+    if not isinstance(privacy, dict):
+        if "privacy" in capture:
+            errors.append("schema:$.privacy:expected_object")
+    else:
+        require_fields(
+            privacy,
+            ("redaction_applied", "private_data_detected", "contains_private_data", "redaction_notes"),
+            "$.privacy",
+        )
+        for field in ("redaction_applied", "private_data_detected", "contains_private_data"):
+            if field in privacy:
+                require_bool(privacy[field], f"$.privacy.{field}")
+        if "redaction_notes" in privacy:
+            require_string_list(privacy["redaction_notes"], "$.privacy.redaction_notes")
+        if "screenshot_privacy_reviewed" in privacy:
+            require_bool(privacy["screenshot_privacy_reviewed"], "$.privacy.screenshot_privacy_reviewed")
+
+    screenshot_policy = capture.get("screenshot_policy")
+    if not isinstance(screenshot_policy, dict):
+        if "screenshot_policy" in capture:
+            errors.append("schema:$.screenshot_policy:expected_object")
+    else:
+        require_fields(screenshot_policy, ("required", "reason", "status"), "$.screenshot_policy")
+        if "required" in screenshot_policy:
+            require_bool(screenshot_policy["required"], "$.screenshot_policy.required")
+        if "reason" in screenshot_policy:
+            require_string(screenshot_policy["reason"], "$.screenshot_policy.reason")
+        if "status" in screenshot_policy:
+            if (
+                not isinstance(screenshot_policy["status"], str)
+                or screenshot_policy["status"] not in SCREENSHOT_STATUSES
+            ):
+                errors.append("schema:$.screenshot_policy.status:invalid_enum")
+
+    return list(dict.fromkeys(errors))
+
+
+def validate_page_capture_contract(capture: Any) -> dict[str, Any]:
+    errors = _page_capture_shape_errors(capture)
+    if not isinstance(capture, dict):
+        return {
+            "schema_version": "1.0",
+            "status": "fail",
+            "errors": errors,
+            "warnings": [],
+            "requires_manual_review": True,
+            "screenshot_policy": {"required": False, "reason": "invalid_capture", "status": "capture_failed"},
+            **_status_fields(errors, [], False),
+        }
+    raw_warnings = capture.get("warnings")
+    warnings: list[str] = (
+        list(dict.fromkeys(raw_warnings))
+        if isinstance(raw_warnings, list) and all(isinstance(item, str) for item in raw_warnings)
+        else []
+    )
     manual_review = False
 
     for key in (
@@ -468,6 +820,256 @@ def validate_page_capture_contract(capture: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def read_capture_admission_bundle(
+    run_dir: Path,
+    *,
+    expected_run_id: str,
+    returncode: int,
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+    dict[str, Any] | None,
+    dict[str, str],
+    list[str],
+]:
+    documents: dict[str, dict[str, Any] | None] = {}
+    digests: dict[str, str] = {}
+    errors: list[str] = []
+    for relative_path in CAPTURE_ADMISSION_PATHS:
+        try:
+            path = resolve_run_relative(run_dir, relative_path, must_exist=True)
+            payload = path.read_bytes()
+        except (OSError, ValueError) as exc:
+            documents[relative_path] = None
+            errors.append(f"capture_admission_read_failed:{relative_path}:{type(exc).__name__}")
+            continue
+        digests[relative_path] = f"sha256:{hashlib.sha256(payload).hexdigest()}"
+        try:
+            document = json.loads(payload)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            documents[relative_path] = None
+            errors.append(f"capture_admission_json_invalid:{relative_path}")
+            continue
+        if not isinstance(document, dict):
+            documents[relative_path] = None
+            errors.append(f"capture_admission_json_not_object:{relative_path}")
+            continue
+        documents[relative_path] = document
+
+    capture = documents.get("capture/page_capture.json")
+    report = documents.get("validation/capture-validation-report.json")
+    manifest = documents.get(CAPTURE_STAGE_MANIFEST_PATH)
+    errors.extend(
+        capture_admissibility_errors(
+            capture=capture,
+            report=report,
+            manifest=manifest,
+            returncode=returncode,
+            run_dir=run_dir,
+            expected_run_id=expected_run_id,
+        )
+    )
+    return capture, report, manifest, digests, list(dict.fromkeys(errors))
+
+
+def _capture_report_shape_error(report: dict[str, Any]) -> str | None:
+    missing = sorted(CAPTURE_REPORT_REQUIRED_FIELDS - report.keys())
+    if missing:
+        return f"required_field_missing:{missing[0]}"
+    if not isinstance(report.get("schema_version"), str) or not report["schema_version"]:
+        return "field_invalid:schema_version"
+    if report.get("status") not in {"pass", "fail"}:
+        return "field_invalid:status"
+    for field in ("errors", "warnings", "completion_blockers"):
+        value = report.get(field)
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            return f"field_invalid:{field}"
+    if not isinstance(report.get("requires_manual_review"), bool):
+        return "field_invalid:requires_manual_review"
+    if report.get("run_status") not in {"complete", "partial", "failed", "aborted_by_policy"}:
+        return "field_invalid:run_status"
+    if report.get("validation_status") not in {"passed", "failed"}:
+        return "field_invalid:validation_status"
+    manual_review = report.get("manual_review")
+    if not isinstance(manual_review, dict):
+        return "field_invalid:manual_review"
+    if (
+        not isinstance(manual_review.get("required"), bool)
+        or manual_review.get("severity") not in {"info", "warning", "blocking"}
+        or not isinstance(manual_review.get("reasons"), list)
+        or not all(isinstance(reason, dict) for reason in manual_review.get("reasons", []))
+    ):
+        return "field_invalid:manual_review"
+    if manual_review["required"] != report["requires_manual_review"]:
+        return "field_invalid:manual_review.required"
+    for reason in manual_review["reasons"]:
+        if (
+            not isinstance(reason.get("code"), str)
+            or not reason["code"]
+            or not isinstance(reason.get("message"), str)
+            or reason.get("severity") not in {"info", "warning", "blocking"}
+            or not isinstance(reason.get("artifact"), str)
+            or not reason["artifact"]
+        ):
+            return "field_invalid:manual_review.reasons"
+    screenshot_policy = report.get("screenshot_policy")
+    if not isinstance(screenshot_policy, dict):
+        return "field_invalid:screenshot_policy"
+    if (
+        not isinstance(screenshot_policy.get("required"), bool)
+        or not isinstance(screenshot_policy.get("reason"), str)
+        or not screenshot_policy["reason"]
+        or screenshot_policy.get("status") not in SCREENSHOT_STATUSES
+    ):
+        return "field_invalid:screenshot_policy"
+    return None
+
+
+def capture_admissibility_errors(
+    *,
+    capture: dict[str, Any] | None,
+    report: dict[str, Any] | None,
+    manifest: dict[str, Any] | None,
+    returncode: int,
+    run_dir: Path,
+    expected_run_id: str,
+) -> list[str]:
+    from inward_eyes.validation import (
+        canonical_manifest_shape_error,
+        validate_manifest_paths,
+        validate_manifest_status,
+    )
+
+    errors: list[str] = []
+    if capture is None:
+        errors.append("capture_missing")
+        canonical_report = None
+    else:
+        canonical_report = validate_page_capture_contract(capture)
+        if canonical_report.get("status") != "pass":
+            errors.append("capture_contract_not_passed")
+    if report is None:
+        errors.append("capture_report_missing")
+    else:
+        report_shape_error = _capture_report_shape_error(report)
+        if report_shape_error:
+            errors.append(f"capture_report_shape:{report_shape_error}")
+        else:
+            errors.extend(f"capture_report_{error}" for error in validate_manifest_status(report))
+        if report.get("status") != "pass":
+            errors.append("capture_report_not_passed")
+        if report.get("validation_status") != "passed":
+            errors.append("capture_report_validation_not_passed")
+        if report.get("errors"):
+            errors.append("capture_report_has_errors")
+        if report.get("completion_blockers"):
+            errors.append("capture_report_has_blockers")
+        if canonical_report is not None:
+            for field in (
+                "status",
+                "errors",
+                "warnings",
+                "requires_manual_review",
+                "run_status",
+                "validation_status",
+                "manual_review",
+                "completion_blockers",
+                "screenshot_policy",
+            ):
+                if report.get(field) != canonical_report.get(field):
+                    errors.append(f"capture_report_mismatch:{field}")
+    if manifest is None:
+        errors.append("capture_manifest_missing")
+    else:
+        manifest_shape_error = canonical_manifest_shape_error(
+            manifest,
+            expected_run_id=expected_run_id,
+            expected_task="capture-adapter",
+        )
+        if manifest_shape_error:
+            errors.append(f"capture_manifest_shape:{manifest_shape_error}")
+        if manifest.get("skill") != "page-to-md":
+            errors.append("capture_manifest_skill_mismatch")
+        if manifest.get("run_status") not in {"complete", "partial"}:
+            errors.append(f"capture_manifest_status_invalid:{manifest.get('run_status')}")
+        if manifest.get("validation_status") != "passed":
+            errors.append("capture_manifest_validation_not_passed")
+        errors.extend(f"capture_{error}" for error in validate_manifest_status(manifest))
+        errors.extend(f"capture_{error}" for error in validate_manifest_paths(run_dir, manifest))
+        evidence = manifest.get("evidence") if isinstance(manifest.get("evidence"), list) else []
+        capture_records = [
+            item
+            for item in evidence
+            if isinstance(item, dict)
+            and item.get("type") == "page_capture"
+            and item.get("path") == "capture/page_capture.json"
+        ]
+        if not capture_records:
+            errors.append("capture_manifest_page_capture_evidence_missing")
+        validation = manifest.get("validation") if isinstance(manifest.get("validation"), dict) else {}
+        if validation.get("report_path") != "validation/capture-validation-report.json":
+            errors.append("capture_manifest_report_path_mismatch")
+        if report is not None:
+            for field in (
+                "run_status",
+                "validation_status",
+                "requires_manual_review",
+                "manual_review",
+                "completion_blockers",
+                "screenshot_policy",
+            ):
+                if manifest.get(field) != report.get(field):
+                    errors.append(f"capture_manifest_report_mismatch:{field}")
+            if validation.get("schema_valid") is not (report.get("status") == "pass"):
+                errors.append("capture_manifest_schema_valid_mismatch")
+        if capture is not None:
+            assets = capture.get("assets") if isinstance(capture.get("assets"), dict) else {}
+            screenshots = assets.get("screenshots") if isinstance(assets.get("screenshots"), list) else []
+            manifest_screenshot_paths = {
+                str(item.get("path"))
+                for item in evidence
+                if isinstance(item, dict) and item.get("type") == "screenshot" and item.get("path")
+            }
+            for item in screenshots:
+                raw_path = item if isinstance(item, str) else item.get("path") if isinstance(item, dict) else None
+                if raw_path and f"capture/{raw_path}" not in manifest_screenshot_paths:
+                    errors.append(f"capture_manifest_screenshot_evidence_missing:{raw_path}")
+    if returncode != 0:
+        errors.append(f"capture_process_returncode:{returncode}")
+    return list(dict.fromkeys(errors))
+
+
+def _capture_screenshot_evidence(run_dir: Path) -> list[dict[str, Any]]:
+    capture_path = resolve_run_relative(run_dir, "capture/page_capture.json", must_exist=True)
+    capture = read_json(capture_path)
+    if not isinstance(capture, dict):
+        raise ValueError("capture/page_capture.json must be a JSON object")
+    assets = capture.get("assets") if isinstance(capture.get("assets"), dict) else {}
+    screenshots = assets.get("screenshots") if isinstance(assets.get("screenshots"), list) else []
+    evidence: list[dict[str, Any]] = []
+    for index, item in enumerate(screenshots, start=1):
+        raw_path = item if isinstance(item, str) else item.get("path") if isinstance(item, dict) else None
+        if not isinstance(raw_path, str) or not raw_path:
+            raise ValueError(f"capture screenshot {index} path is invalid")
+        manifest_path = f"capture/{raw_path}"
+        screenshot_path = resolve_run_relative(run_dir, manifest_path, must_exist=True)
+        if not screenshot_file_is_valid(screenshot_path):
+            raise ValueError(f"capture screenshot is not a supported image: {manifest_path}")
+        evidence.append(
+            {
+                "id": f"SS{index:03d}",
+                "type": "screenshot",
+                "path": manifest_path,
+                "captured_at": item.get("captured_at") if isinstance(item, dict) else capture.get("captured_at"),
+                "sha256": _sha256_file(screenshot_path),
+            }
+        )
+    policy = capture.get("screenshot_policy") if isinstance(capture.get("screenshot_policy"), dict) else {}
+    if policy.get("status") == "required_and_present" and not evidence:
+        raise ValueError("required screenshot evidence is missing")
+    return evidence
+
+
 def write_capture_stage_manifest(
     run_dir: Path,
     *,
@@ -485,9 +1087,10 @@ def write_capture_stage_manifest(
     evidence = []
     if capture_written:
         evidence.append({"id": "C001", "type": "page_capture", "path": "capture/page_capture.json"})
+        evidence.extend(_capture_screenshot_evidence(run_dir))
     manifest = {
         "run_id": run_id,
-        "task": "page-to-md",
+        "task": "capture-adapter",
         "started_at": started_at,
         "finished_at": finished_at,
         "operator": "codex",
@@ -512,8 +1115,105 @@ def write_capture_stage_manifest(
             {"required": False, "reason": "unknown", "status": "capture_failed"},
         ),
     }
-    write_json(run_dir / "manifest.json", manifest)
+    write_json(resolve_run_relative(run_dir, CAPTURE_STAGE_MANIFEST_PATH), manifest)
     return manifest
+
+
+def finalize_page_workflow_failure(
+    run_dir: Path,
+    *,
+    run_id: str,
+    failure_code: str,
+    ownership_token: str,
+) -> bool:
+    if not page_workflow_ownership_matches(
+        run_dir,
+        run_id=run_id,
+        ownership_token=ownership_token,
+    ):
+        return False
+    if (run_dir / "manifest.json").exists():
+        return False
+    (run_dir / CONTINUATION_HANDOFF_PATH).unlink(missing_ok=True)
+    stage_path = run_dir / CAPTURE_STAGE_MANIFEST_PATH
+    report_path = run_dir / "validation" / "capture-validation-report.json"
+    try:
+        stage = read_json(stage_path) if stage_path.is_file() else {}
+    except (OSError, ValueError):
+        stage = {}
+    try:
+        report = read_json(report_path) if report_path.is_file() else {}
+    except (OSError, ValueError):
+        report = {}
+    if not isinstance(stage, dict):
+        stage = {}
+    if not isinstance(report, dict):
+        report = {}
+    warnings = list(dict.fromkeys([str(item) for item in report.get("warnings", [])] + [failure_code]))
+    blockers = list(
+        dict.fromkeys(
+            [str(item) for item in report.get("completion_blockers", [])]
+            + [str(item) for item in report.get("errors", [])]
+            + [failure_code]
+        )
+    )
+    reason = {
+        "code": failure_code,
+        "message": failure_code.replace("_", " "),
+        "severity": "blocking",
+        "artifact": "validation/capture-validation-report.json",
+    }
+    failed_report = {
+        **report,
+        "schema_version": str(report.get("schema_version") or "1.0"),
+        "status": "fail",
+        "errors": blockers,
+        "warnings": warnings,
+        "requires_manual_review": True,
+        "run_status": "aborted_by_policy"
+        if stage.get("run_status") == "aborted_by_policy" or report.get("run_status") == "aborted_by_policy"
+        else "failed",
+        "validation_status": "failed",
+        "manual_review": {"required": True, "severity": "blocking", "reasons": [reason]},
+        "completion_blockers": blockers,
+        "screenshot_policy": report.get("screenshot_policy")
+        or stage.get("screenshot_policy")
+        or {"required": False, "reason": "workflow_failed", "status": "capture_failed"},
+    }
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json(report_path, failed_report)
+    evidence = [dict(item) for item in stage.get("evidence", []) if isinstance(item, dict)]
+    capture_path = run_dir / "capture" / "page_capture.json"
+    if capture_path.is_file() and not any(item.get("path") == "capture/page_capture.json" for item in evidence):
+        evidence.append({"id": "C001", "type": "page_capture", "path": "capture/page_capture.json"})
+    write_json(
+        run_dir / "manifest.json",
+        {
+            "run_id": run_id,
+            "task": "page-to-md",
+            "started_at": stage.get("started_at") or utc_now(),
+            "finished_at": utc_now(),
+            "operator": "codex",
+            "skill": "page-to-md",
+            "inputs": stage.get("inputs") if isinstance(stage.get("inputs"), dict) else {},
+            "artifacts": [],
+            "evidence": evidence,
+            "validation": {
+                "schema_valid": False,
+                "warnings": len(warnings),
+                "requires_manual_review": True,
+                "report_path": "validation/capture-validation-report.json",
+            },
+            "warnings": warnings,
+            "requires_manual_review": True,
+            "run_status": failed_report["run_status"],
+            "validation_status": "failed",
+            "manual_review": failed_report["manual_review"],
+            "completion_blockers": blockers,
+            "screenshot_policy": failed_report["screenshot_policy"],
+        },
+    )
+    return True
 
 
 def write_capture_warnings(path: Path, warnings: list[str]) -> None:

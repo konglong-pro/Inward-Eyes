@@ -47,9 +47,11 @@ Current implementation covers local HTML and page-capture JSON conversion for
 `page-to-md`, browser adapter boundary captures for approved public/current
 pages, provided-URL browser-research capture, provided product-URL price
 capture, M10 bounded discovery wrappers for research sources and price
-candidates, M11 v1.0 contract hardening, and M12-M20 deterministic local
+candidates, M11 v1.0 contract hardening, M12-M20 deterministic local
 operations for adapter matrix reporting, replay evals, privacy checks, site
-profiles, CLI review, package dry-run, batch/retry/run indexing, and exports.
+profiles, CLI review, package dry-run, batch/retry/run indexing, and exports,
+plus M21 contract-integrity hardening for network boundaries, atomic evidence,
+continuation handoffs, validation, and distribution.
 
 The implementation remains small-scope and evidence-first. It is not a broad
 crawler, marketplace monitor, automated purchasing flow, unrestricted logged-in
@@ -80,9 +82,10 @@ The output root must be configurable by task or workspace.
 6. Normalize data into schema-shaped JSON.
 7. Validate schema and consistency.
 8. Render human artifacts such as Markdown, CSV, charts, or reports.
-9. Write manifest and warnings.
-10. Optionally derive review, index, package, or export views from the manifest.
-11. Report artifacts, checks, skipped checks, and risks.
+9. Validate the candidate manifest and final status in memory.
+10. Atomically write validation output and one final canonical manifest.
+11. Optionally derive review, index, package, or export views from the manifest.
+12. Report artifacts, checks, skipped checks, and risks.
 
 ## Skill Boundaries
 
@@ -97,6 +100,12 @@ M10 discovery wrappers may propose scoped public research sources or approved ec
 M11 did not add a browser backend. It froze the artifact, schema, error, status, and manual-review contracts for the existing M7-M10 workflow set.
 
 M12-M20 also do not add browser backends or skills. They add deterministic local operations around the existing workflows: adapter matrix inventory, replay evals, privacy scans, advisory site profiles, text review, package dry-run, batch/retry/run indexing, and view-only exporters.
+
+M21 does not add product scope. It closes integrity gaps in the existing layers:
+safe run/source/path identity, request-time public-network enforcement with IP
+pinning, screenshot digests, capture admission, one-time continuation handoffs,
+atomic finalization, fail-closed local operations, schema drift checks, and exact
+reproducible packaging.
 
 ## Tool Routing Summary
 

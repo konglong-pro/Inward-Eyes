@@ -1,21 +1,21 @@
-﻿current:
+current:
   inward_eyes:
-    phase_id: m0_m2_foundation_page_to_md
-    title: "M0-M2 closed; M3-M5 not approved"
+    phase_id: m21_contract_integrity_hardening
+    title: "M21 contract-integrity hardening"
     status: completed
-    canonical_spec: docs/planning/archive/m0-m2-foundation-and-page-to-md.md
+    canonical_spec: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
     agent_rules: docs/agents/current/browser-operator-agent-rules.md
-    release_gate: null
-    allowed_areas:
-      - AGENTS.md
-      - README.md
-      - CONTEXT.md
-      - docs/**
+    release_gate: docs/planning/archive/m21-contract-integrity-hardening-closeout.md#acceptance-gates
+    allowed_areas: []
     forbidden_areas:
+      - new skills
+      - new browser backends
+      - product scope expansion beyond existing workflows and local derived operations
       - runtime browser profiles
       - cookies
       - tokens
       - payment/account settings
+      - user-provided captured evidence under browser-operator-runs/**
     status_summary: docs/project-status.md
 
 phases:
@@ -26,10 +26,235 @@ phases:
     evidence: []
     supersedes: []
     superseded_by: null
+  m3_browser_research_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m3-browser-research-mvp.md
+    closeout: docs/planning/archive/m3-browser-research-mvp-closeout.md
+    evidence: []
+    supersedes:
+      - m0_m2_foundation_page_to_md
+    superseded_by: m4_m5_price_pluginization_mvp
+  m4_m5_price_pluginization_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m4-m5-price-pluginization-mvp.md
+    closeout: docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+    supersedes:
+      - m3_browser_research_mvp
+    superseded_by: m6_browser_capture_adapter_mvp
   m3_m5_research_price_pluginization:
-    status: next
-    canonical_spec: docs/planning/next/m3-m5-research-price-pluginization.md
-    closeout: null
+    status: superseded
+    canonical_spec: docs/planning/superseded/m3-m5-research-price-pluginization.md
+    closeout: docs/planning/archive/m4-m5-price-pluginization-mvp-closeout.md
     evidence: []
     supersedes: []
+    superseded_by: m4_m5_price_pluginization_mvp
+  m6_browser_capture_adapter_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m6-browser-capture-adapter-mvp.md
+    closeout: docs/planning/archive/m6-browser-capture-adapter-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_capture_adapter_eval.py
+      - evals/run_cross_skill_schema_eval.py
+    supersedes:
+      - m4_m5_price_pluginization_mvp
+    superseded_by: m7_current_chrome_capture_mvp
+  m7_current_chrome_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m7-current-chrome-capture-mvp.md
+    closeout: docs/planning/archive/m7-current-chrome-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_capture_adapter_eval.py
+    supersedes:
+      - m6_browser_capture_adapter_mvp
+    superseded_by: m8_research_provided_url_capture_mvp
+  m8_research_provided_url_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m8-research-provided-url-capture-mvp.md
+    closeout: docs/planning/archive/m8-research-provided-url-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_research_capture_eval.py
+    supersedes:
+      - m7_current_chrome_capture_mvp
+    superseded_by: m9_price_product_url_capture_mvp
+  m9_price_product_url_capture_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m9-price-product-url-capture-mvp.md
+    closeout: docs/planning/archive/m9-price-product-url-capture-mvp-closeout.md
+    evidence:
+      - .github/workflows/ci.yml
+      - evals/run_price_capture_eval.py
+    supersedes:
+      - m8_research_provided_url_capture_mvp
+    superseded_by: m10a_research_small_scope_discovery_mvp
+  m10a_research_small_scope_discovery_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m10a-research-small-scope-discovery-mvp.md
+    closeout: docs/planning/archive/m10a-research-small-scope-discovery-mvp-closeout.md
+    evidence:
+      - evals/run_research_discovery_eval.py
+      - schemas/research_discovery_input.schema.json
+      - schemas/discovery_log.schema.json
+    supersedes:
+      - m9_price_product_url_capture_mvp
+    superseded_by: m10_small_scope_discovery
+  m10b_price_approved_candidate_discovery_mvp:
+    status: completed
+    canonical_spec: docs/planning/archive/m10b-price-approved-candidate-discovery-mvp.md
+    closeout: docs/planning/archive/m10b-price-approved-candidate-discovery-mvp-closeout.md
+    evidence:
+      - evals/run_price_candidate_discovery_eval.py
+      - schemas/price_candidate_discovery_input.schema.json
+      - schemas/price_candidates.schema.json
+    supersedes:
+      - m10a_research_small_scope_discovery_mvp
+    superseded_by: m10_small_scope_discovery
+  m10_small_scope_discovery:
+    status: completed
+    canonical_spec: docs/planning/archive/m10-small-scope-discovery-closeout.md
+    closeout: docs/planning/archive/m10-small-scope-discovery-closeout.md
+    evidence:
+      - docs/planning/archive/m10a-research-small-scope-discovery-mvp-closeout.md
+      - docs/planning/archive/m10b-price-approved-candidate-discovery-mvp-closeout.md
+      - evals/run_research_discovery_eval.py
+      - evals/run_price_candidate_discovery_eval.py
+      - schemas/research_discovery_input.schema.json
+      - schemas/discovery_log.schema.json
+      - schemas/price_candidate_discovery_input.schema.json
+      - schemas/price_candidates.schema.json
+    supersedes:
+      - m10a_research_small_scope_discovery_mvp
+      - m10b_price_approved_candidate_discovery_mvp
+    superseded_by: m11_v1_hardening_release_candidate
+  m11_v1_hardening_release_candidate:
+    status: completed
+    canonical_spec: docs/planning/archive/m11-v1-hardening-release-candidate.md
+    closeout: docs/planning/archive/m11-v1-release-risk-report.md
+    evidence:
+      - docs/contracts/artifact-contracts.md
+      - docs/contracts/error-status-contract.md
+      - docs/contracts/schemas-and-validation-contract.md
+      - docs/planning/archive/m11-v1-release-risk-report.md
+    supersedes:
+      - m10_small_scope_discovery
+    superseded_by: m12_adapter_matrix
+  m12_adapter_matrix:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/adapter_matrix_runner.py
+      - scripts/inward_eyes/adapter_matrix.py
+      - evals/run_adapter_matrix_eval.py
+    supersedes:
+      - m11_v1_hardening_release_candidate
+    superseded_by: m13_real_world_evals
+  m13_real_world_evals:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - evals/run_real_world_eval.py
+    supersedes:
+      - m12_adapter_matrix
+    superseded_by: m14_privacy_security
+  m14_privacy_security:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/inward_eyes/safety.py
+      - scripts/inward_eyes/privacy.py
+      - scripts/privacy_report_runner.py
+      - evals/run_privacy_eval.py
+    supersedes:
+      - m13_real_world_evals
+    superseded_by: m15_site_profiles
+  m15_site_profiles:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - profiles/site_profiles.json
+      - schemas/site_profiles.schema.json
+      - scripts/inward_eyes/site_profiles.py
+      - scripts/site_profile_runner.py
+      - evals/run_site_profile_eval.py
+    supersedes:
+      - m14_privacy_security
+    superseded_by: m16_review_ui
+  m16_review_ui:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/inward_eyes/review.py
+      - scripts/review_run.py
+      - evals/run_review_ui_eval.py
+    supersedes:
+      - m15_site_profiles
+    superseded_by: m17_distribution
+  m17_distribution:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/inward_eyes/distribution.py
+      - scripts/plugin_package.py
+      - evals/run_distribution_eval.py
+    supersedes:
+      - m16_review_ui
+    superseded_by: m18_m19_batch_retry_run_database
+  m18_m19_batch_retry_run_database:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/inward_eyes/run_index.py
+      - scripts/run_database.py
+      - scripts/batch_runner.py
+      - evals/run_batch_retry_eval.py
+    supersedes:
+      - m17_distribution
+    superseded_by: m20_exporters_extensions
+  m20_exporters_extensions:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - scripts/inward_eyes/exporters.py
+      - scripts/export_run.py
+      - evals/run_export_eval.py
+    supersedes:
+      - m18_m19_batch_retry_run_database
+    superseded_by: m21_contract_integrity_hardening
+  m12_m20_post_rc_expansion:
+    status: completed
+    canonical_spec: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    closeout: docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+    evidence:
+      - docs/planning/archive/m12-m20-post-rc-expansion-closeout.md
+      - .github/workflows/ci.yml
+    supersedes:
+      - m11_v1_hardening_release_candidate
+    superseded_by: m21_contract_integrity_hardening
+  m21_contract_integrity_hardening:
+    status: completed
+    canonical_spec: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+    closeout: docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+    evidence:
+      - docs/planning/archive/m21-contract-integrity-hardening-closeout.md
+      - .github/workflows/ci.yml
+      - evals/run_capture_adapter_eval.py
+      - evals/run_cross_skill_schema_eval.py
+      - evals/run_distribution_eval.py
+      - evals/run_batch_retry_eval.py
+      - evals/run_export_eval.py
+    supersedes:
+      - m20_exporters_extensions
+      - m12_m20_post_rc_expansion
     superseded_by: null

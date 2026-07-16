@@ -1,11 +1,46 @@
 [
   {
+    "action": "open_url",
+    "classification": "green",
+    "allowed": true
+  },
+  {
     "action": "expand_details",
     "classification": "green",
     "allowed": true
   },
   {
+    "action": "capture_current_visible_page",
+    "classification": "green",
+    "allowed": true
+  },
+  {
+    "action": "export_run_summary",
+    "classification": "green",
+    "allowed": true
+  },
+  {
     "action": "change_region",
+    "classification": "yellow",
+    "allowed": false
+  },
+  {
+    "action": "change_currency",
+    "classification": "yellow",
+    "allowed": false
+  },
+  {
+    "action": "open_account_menu",
+    "classification": "yellow",
+    "allowed": false
+  },
+  {
+    "action": "use_browser_history",
+    "classification": "yellow",
+    "allowed": false
+  },
+  {
+    "action": "save_sensitive_screenshot",
     "classification": "yellow",
     "allowed": false
   },
@@ -27,6 +62,41 @@
   {
     "action": "post_comment",
     "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "export_cookies",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "export_har",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "scan_tabs",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "read_private_messages",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "use_stealth",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "bypass_antibot",
+    "classification": "red",
+    "allowed": false
+  },
+  {
+    "action": "unknown_future_action",
+    "classification": "unknown",
     "allowed": false
   }
 ]

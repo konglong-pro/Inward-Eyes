@@ -1,0 +1,85 @@
+[
+  {
+    "name": "matching-candidates-within-cap",
+    "input": "matching-candidates-within-cap.json",
+    "expected_candidate_status": "pass",
+    "expected_price_status": "pass",
+    "expected_run_status": "complete",
+    "expected_approved_count": 2,
+    "expected_lowest": "Q002",
+    "expect_price_artifacts": true
+  },
+  {
+    "name": "outside-allowed-domain",
+    "input": "outside-allowed-domain.json",
+    "expect_runner_blocked": true,
+    "expected_candidate_status": "fail",
+    "expected_run_status": "failed",
+    "expected_approved_count": 1,
+    "expect_price_artifacts": false,
+    "required_candidate_error_terms": [
+      "candidate.domain_outside_scope"
+    ]
+  },
+  {
+    "name": "low-confidence-spec-mismatch-excluded",
+    "input": "low-confidence-spec-mismatch-excluded.json",
+    "expected_candidate_status": "pass",
+    "expected_price_status": "pass",
+    "expected_run_status": "partial",
+    "expected_approved_count": 1,
+    "expected_lowest": "Q001",
+    "expect_price_artifacts": true
+  },
+  {
+    "name": "duplicate-product-url-deduped",
+    "input": "duplicate-product-url-deduped.json",
+    "expected_candidate_status": "pass",
+    "expected_price_status": "pass",
+    "expected_run_status": "complete",
+    "expected_approved_count": 1,
+    "expected_lowest": "Q001",
+    "expect_price_artifacts": true,
+    "required_rejection_terms": [
+      "duplicate_product_url"
+    ]
+  },
+  {
+    "name": "recommendation-link-ignored",
+    "input": "recommendation-link-ignored.json",
+    "expected_candidate_status": "pass",
+    "expected_price_status": "pass",
+    "expected_run_status": "complete",
+    "expected_approved_count": 1,
+    "expected_lowest": "Q001",
+    "expect_price_artifacts": true,
+    "required_rejection_terms": [
+      "recommendation_link_ignored"
+    ]
+  },
+  {
+    "name": "candidate-cap-exceeded",
+    "input": "candidate-cap-exceeded.json",
+    "expect_runner_blocked": true,
+    "expected_candidate_status": "fail",
+    "expected_run_status": "failed",
+    "expected_approved_count": 0,
+    "expect_price_artifacts": false,
+    "required_candidate_error_terms": [
+      "candidate.total_cap_exceeded"
+    ]
+  },
+  {
+    "name": "coupon-action-required-excluded",
+    "input": "coupon-action-required-excluded.json",
+    "expected_candidate_status": "pass",
+    "expected_price_status": "pass",
+    "expected_run_status": "partial",
+    "expected_approved_count": 2,
+    "expected_lowest": "Q002",
+    "expect_price_artifacts": true,
+    "required_anomalies": [
+      "coupon_action_required"
+    ]
+  }
+]

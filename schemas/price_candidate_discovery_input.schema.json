@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/price_candidate_discovery_input.schema.json",
+  "title": "PriceCandidateDiscoveryInput",
+  "type": "object",
+  "required": [
+    "target_product",
+    "required_specs",
+    "allowed_platforms",
+    "allowed_domains",
+    "max_candidates_per_platform",
+    "region",
+    "currency"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "target_product": {
+      "type": [
+        "string",
+        "object"
+      ]
+    },
+    "required_specs": {
+      "type": "object"
+    },
+    "allowed_platforms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "max_candidates_per_platform": {
+      "type": "integer"
+    },
+    "region": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "excluded_sellers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "seller_preferences": {
+      "type": "object"
+    },
+    "approval_policy": {
+      "type": "string",
+      "enum": [
+        "auto_high_confidence",
+        "review_only"
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "bounded-three-sources",
+    "input": "bounded-three-sources.json",
+    "expected_discovery_status": "pass",
+    "expected_claim_status": "pass",
+    "expected_run_status": "complete",
+    "expected_selected_count": 3
+  },
+  {
+    "name": "max-source-cap-exceeded",
+    "input": "max-source-cap-exceeded.json",
+    "expect_runner_blocked": true,
+    "expected_discovery_status": "fail",
+    "required_discovery_error_terms": [
+      "max_sources_hard_limit_exceeded"
+    ]
+  },
+  {
+    "name": "rejected-source-with-reason",
+    "input": "rejected-source-with-reason.json",
+    "expected_discovery_status": "pass",
+    "expected_claim_status": "pass",
+    "expected_run_status": "complete",
+    "expected_selected_count": 1,
+    "required_rejection_terms": [
+      "domain_excluded"
+    ]
+  },
+  {
+    "name": "unsupported-claim",
+    "input": "unsupported-claim.json",
+    "expected_discovery_status": "pass",
+    "expected_claim_status": "fail",
+    "expected_run_status": "failed",
+    "expected_selected_count": 1,
+    "required_claim_error_terms": [
+      "unsupported_claim:C001:no_source_ids",
+      "unsupported_claim:C001:no_support"
+    ]
+  },
+  {
+    "name": "syndicated-duplicate",
+    "input": "syndicated-duplicate.json",
+    "expected_discovery_status": "pass",
+    "expected_claim_status": "pass",
+    "expected_run_status": "partial",
+    "expected_selected_count": 2,
+    "required_warnings": [
+      "source_independence_not_independent:S002",
+      "claim_not_independently_supported:C001"
+    ]
+  },
+  {
+    "name": "prompt-injection-search-result",
+    "input": "prompt-injection-search-result.json",
+    "expected_discovery_status": "pass",
+    "expected_claim_status": "pass",
+    "expected_run_status": "complete",
+    "expected_selected_count": 1,
+    "required_rejection_terms": [
+      "prompt_injection_text_present"
+    ]
+  }
+]

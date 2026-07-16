@@ -3,6 +3,181 @@
   "$id": "https://inward-eyes.local/schemas/price_compare_run.schema.json",
   "title": "PriceCompareRun",
   "type": "object",
-  "description": "Placeholder schema for M4. Not enforced in M2.",
-  "x_status": "planned"
+  "required": [
+    "schema_version",
+    "task_type",
+    "generated_at",
+    "comparison",
+    "candidates",
+    "quotes",
+    "anomalies",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "const": "price-compare"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "comparison": {
+      "type": "object",
+      "required": [
+        "title",
+        "region",
+        "currency",
+        "required_specs",
+        "min_match_confidence",
+        "lowest_eligible_quote_id"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "required_specs": {
+          "type": "object"
+        },
+        "min_match_confidence": {
+          "type": "number"
+        },
+        "lowest_eligible_quote_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "product_identity",
+          "platform",
+          "url",
+          "seller",
+          "condition",
+          "currency",
+          "match_confidence",
+          "manual_review_required",
+          "anomalies"
+        ],
+        "properties": {
+          "candidate_id": {
+            "type": "string"
+          },
+          "product_identity": {
+            "type": "object"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "seller": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "match_confidence": {
+            "type": "number"
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "anomalies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "quote_id",
+          "source_id",
+          "url",
+          "platform",
+          "region",
+          "currency",
+          "product_identity",
+          "seller",
+          "condition",
+          "stock",
+          "prices",
+          "estimated_total",
+          "quote_context",
+          "quote_context_hash",
+          "match_confidence",
+          "selected_specs_confirmed",
+          "flags",
+          "screenshot_policy",
+          "screenshot",
+          "anomalies",
+          "manual_review_required",
+          "excluded_from_lowest_price",
+          "eligible_for_lowest_price"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "anomalies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "record_id",
+          "record_type",
+          "anomaly"
+        ],
+        "properties": {
+          "record_id": {
+            "type": "string"
+          },
+          "record_type": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "quote"
+            ]
+          },
+          "anomaly": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
 }

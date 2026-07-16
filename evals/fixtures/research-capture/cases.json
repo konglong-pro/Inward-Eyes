@@ -1,0 +1,71 @@
+[
+  {
+    "name": "two-source-supported",
+    "input": "two-source-supported.json",
+    "expected_status": "pass",
+    "expected_run_status": "complete",
+    "required_report_terms": [
+      "C001",
+      "[S001]",
+      "[S002]"
+    ],
+    "required_source_ids": [
+      "S001",
+      "S002"
+    ]
+  },
+  {
+    "name": "unsupported-claim",
+    "input": "unsupported-claim.json",
+    "expected_status": "fail",
+    "expected_run_status": "failed",
+    "required_error_terms": [
+      "unsupported_claim:C001:no_source_ids",
+      "unsupported_claim:C001:no_support"
+    ]
+  },
+  {
+    "name": "single-source-claim",
+    "input": "single-source-claim.json",
+    "expected_status": "pass",
+    "expected_run_status": "complete",
+    "required_report_terms": [
+      "single-source",
+      "C001"
+    ]
+  },
+  {
+    "name": "syndicated-source",
+    "input": "syndicated-source.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "required_warnings": [
+      "source_independence_not_independent:S002",
+      "claim_not_independently_supported:C001"
+    ]
+  },
+  {
+    "name": "source-capture-failure",
+    "input": "source-capture-failure.json",
+    "expected_status": "pass",
+    "expected_run_status": "partial",
+    "required_warnings": [
+      "S003:capture_failed"
+    ],
+    "missing_capture_sources": [
+      "source-003"
+    ]
+  },
+  {
+    "name": "prompt-injection-source",
+    "input": "prompt-injection-source.json",
+    "expected_status": "pass",
+    "expected_run_status": "complete",
+    "required_capture_warnings": [
+      "prompt_injection_text_present"
+    ],
+    "required_report_terms": [
+      "Prompt injection text in a source is treated as data"
+    ]
+  }
+]

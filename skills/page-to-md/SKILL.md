@@ -1,21 +1,29 @@
 ---
 name: page-to-md
-description: Convert exactly one page/thread/URL/local HTML/page capture into evidence-backed Markdown with metadata, source record, AST, validation, and optional screenshot. Excludes research, price comparison, purchasing, account changes, posting, messaging, coupons, cart, and checkout.
+description: Convert exactly one page, or one already captured/local thread-like page, into evidence-backed Markdown with metadata, source record, AST, validation, and optional screenshot. Excludes live full-thread capture, research, price comparison, purchasing, account changes, posting, messaging, coupons, cart, and checkout.
 ---
 
 # page-to-md
 
-You convert one page or one thread into evidence-backed Markdown.
+You convert one page, or one already captured/local thread-like page, into evidence-backed Markdown.
 
 ## Inputs
 
-Accept one of:
+Preferred implemented inputs:
 
-- Current browser page.
-- URL that Codex can open with an approved browser tool.
 - Local HTML file.
-- Page capture JSON created by Inward Eyes scripts.
+- Page capture JSON created by Inward Eyes capture scripts.
+
+Browser-backed inputs, limited to frozen M6/M7 boundaries:
+
+- One public URL captured through the M6 public URL adapter boundary.
+- One explicitly user-approved currently visible Chrome page captured through the M7 current Chrome boundary.
+
+Fallback input:
+
 - Screenshot plus URL only as fallback; mark the run partial.
+
+Live full-thread capture, infinite-scroll capture, and new browser backends remain out of scope for this skill unless a future phase implements them.
 
 ## Required Outputs
 
@@ -50,6 +58,45 @@ Create a run directory outside the plugin package:
 11. Render Markdown from structured data, not directly from free-form model prose.
 12. Report warnings and manual review needs.
 
+## Document AST Blocks
+
+Allowed block types:
+
+- `heading`
+- `paragraph`
+- `list_item`
+- `quote`
+- `code`
+- `table`
+- `image`
+- `thread_post`
+
+Thread-like pages must use `thread_post` blocks, not fake headings. Product pages converted by `page-to-md` remain page documents composed from the same block types; product pricing conclusions belong only in `price-compare`. Every block should carry `source_ref` when available.
+
+Minimum `thread_post` fields:
+
+```json
+{
+  "type": "thread_post",
+  "author": "username",
+  "published_at": null,
+  "body_blocks": [],
+  "permalink": null,
+  "warnings": ["published_time_not_found"]
+}
+```
+
+## Completion Status
+
+A run may end as:
+
+- `complete`: all required schema, consistency, evidence, and screenshot policy checks pass.
+- `partial`: fallback input was used, main content is incomplete, screenshot capture failed but was documented, or key metadata is unavailable.
+- `failed`: no valid source record, no usable main content, schema validation failed, or required evidence is missing.
+- `aborted_by_policy`: a Red action or unapproved Yellow action blocks the task.
+
+Do not present `partial` as successful conversion.
+
 ## Hard Rules
 
 - Never invent author or publish time.
@@ -66,5 +113,29 @@ When working from a local HTML file or capture JSON, use:
 ```bash
 python scripts/page_to_md_runner.py --input <path> --url <source-url> --output-root <output-root>
 ```
+
+For the optional M6 Playwright MCP adapter boundary, use the wrapper when you want one command to run capture, capture validation, rendering, and run validation:
+
+```bash
+python scripts/capture/page_to_md_browser_runner.py --url <public-url> --output-root <output-root> --run-id <run-id>
+```
+
+For the optional M7 current Chrome boundary, use the wrapper only after the user has explicitly approved the currently visible page and any screenshot has already passed privacy review/redaction:
+
+```bash
+python scripts/capture/current_chrome_page_to_md_runner.py --url <visible-url> --user-approved-current-page --page-title "<visible-title>" --selected-main-content-file <redacted-text-file> --screenshot <reviewed-screenshot> --screenshot-privacy-reviewed --login-state confirmed --requires-login --output-root <output-root> --run-id <run-id>
+```
+
+The current Chrome adapter is one visible page only. It must not scan tabs, explore account menus, crawl private dashboards, export browser profiles, save cookies, save tokens, save HAR, save local storage, save session storage, save passwords, or save payment details.
+
+When an approved M6/M7 capture path has already produced observations, write those observations to capture JSON explicitly:
+
+```bash
+python scripts/capture/playwright_mcp_capture.py --url <public-url> --page-title "<observed-title>" --selected-main-content-file <text-file> --output-root <output-root> --run-id <run-id>
+python scripts/validation/validate_page_capture.py <output-root>/<run-id>/capture/page_capture.json
+python scripts/page_to_md_runner.py --input <output-root>/<run-id>/capture/page_capture.json --output-root <output-root> --run-id <run-id>
+```
+
+The capture script records Playwright MCP observations and can optionally use local Python Playwright when it is already installed. It does not install dependencies, enable MCP by default, attach a real Chrome profile, save cookies, save HAR files, or bypass approval.
 
 Use the project root as the working directory.

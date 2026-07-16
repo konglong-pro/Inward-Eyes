@@ -2,7 +2,7 @@
 
 ## Terms
 
-**Inward Eyes**: A planned Codex plugin for evidence-backed browser workflows.
+**Inward Eyes**: A local Codex plugin for evidence-backed browser workflows.
 
 **Evidence-backed browser workflow**: A browser task that produces structured outputs linked to source records, screenshots, timestamps, validation reports, and run manifests.
 

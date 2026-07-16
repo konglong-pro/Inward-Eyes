@@ -1,6 +1,6 @@
 {
   "name": "inward-eyes",
-  "version": "0.1.0",
+  "version": "0.2.0+codex.20260710093025",
   "description": "Evidence-backed browser workflows for Codex page conversion, research, and price comparison.",
   "author": {
     "name": "Inward Eyes Project"
@@ -18,7 +18,7 @@
   "interface": {
     "displayName": "Inward Eyes",
     "shortDescription": "Evidence-backed browser workflows for Codex.",
-    "longDescription": "Read-only Codex skills for page-to-Markdown conversion, source-backed browser research, and ecommerce price comparison with source records, validation, and evidence manifests.",
+    "longDescription": "Read-only Codex skills for page-to-Markdown conversion, source-backed browser research, and ecommerce price comparison with source records, validation, anomalies, rendered artifacts, and evidence manifests.",
     "developerName": "Inward Eyes Project",
     "category": "Productivity",
     "capabilities": [

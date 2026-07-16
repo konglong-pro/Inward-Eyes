@@ -1,0 +1,272 @@
+{
+  "schema_version": "1.0",
+  "target_product": "Example Phone",
+  "required_specs": {
+    "storage": "256GB",
+    "color": "Black"
+  },
+  "allowed_platforms": [
+    "ExampleShop"
+  ],
+  "allowed_domains": [
+    "shop.example.test"
+  ],
+  "max_candidates_per_platform": 25,
+  "region": "US",
+  "currency": "USD",
+  "approval_policy": "auto_high_confidence",
+  "candidates": [
+    {
+      "candidate_id": "K001",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-001",
+      "visible_product_name": "Example Phone 256GB Black 001",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 801.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K002",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-002",
+      "visible_product_name": "Example Phone 256GB Black 002",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 802.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K003",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-003",
+      "visible_product_name": "Example Phone 256GB Black 003",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 803.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K004",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-004",
+      "visible_product_name": "Example Phone 256GB Black 004",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 804.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K005",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-005",
+      "visible_product_name": "Example Phone 256GB Black 005",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 805.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K006",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-006",
+      "visible_product_name": "Example Phone 256GB Black 006",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 806.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K007",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-007",
+      "visible_product_name": "Example Phone 256GB Black 007",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 807.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K008",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-008",
+      "visible_product_name": "Example Phone 256GB Black 008",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 808.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K009",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-009",
+      "visible_product_name": "Example Phone 256GB Black 009",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 809.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K010",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-010",
+      "visible_product_name": "Example Phone 256GB Black 010",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 810.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K011",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-011",
+      "visible_product_name": "Example Phone 256GB Black 011",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 811.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K012",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-012",
+      "visible_product_name": "Example Phone 256GB Black 012",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 812.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K013",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-013",
+      "visible_product_name": "Example Phone 256GB Black 013",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 813.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K014",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-014",
+      "visible_product_name": "Example Phone 256GB Black 014",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 814.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K015",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-015",
+      "visible_product_name": "Example Phone 256GB Black 015",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 815.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K016",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-016",
+      "visible_product_name": "Example Phone 256GB Black 016",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 816.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K017",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-017",
+      "visible_product_name": "Example Phone 256GB Black 017",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 817.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K018",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-018",
+      "visible_product_name": "Example Phone 256GB Black 018",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 818.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K019",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-019",
+      "visible_product_name": "Example Phone 256GB Black 019",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 819.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K020",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-020",
+      "visible_product_name": "Example Phone 256GB Black 020",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 820.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    },
+    {
+      "candidate_id": "K021",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-021",
+      "visible_product_name": "Example Phone 256GB Black 021",
+      "visible_specs": {"storage": "256GB", "color": "Black"},
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 821.0,
+      "match_confidence": 0.95,
+      "selection_rationale": "Synthetic over-cap candidate."
+    }
+  ]
+}

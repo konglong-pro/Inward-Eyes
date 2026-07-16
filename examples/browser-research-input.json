@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "topic": "Example research question",
+  "question": "What does the evidence show?",
+  "summary": "Replace this with a source-backed summary rendered from claims.",
+  "sources": [],
+  "claims": [],
+  "unknowns": [],
+  "warnings": []
+}

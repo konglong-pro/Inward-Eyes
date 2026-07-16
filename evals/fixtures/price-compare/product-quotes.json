@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0",
+  "title": "Example Phone 256GB Black price comparison",
+  "region": "US",
+  "currency": "USD",
+  "product": {
+    "target_name": "Example Phone",
+    "required_specs": {
+      "storage": "256GB",
+      "color": "Black",
+      "network": "Unlocked"
+    }
+  },
+  "candidates": [
+    {
+      "candidate_id": "K001",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "platform": "ExampleShop",
+      "url": "https://shop.example.test/product/example-phone-256-black",
+      "seller": "ExampleShop",
+      "condition": "new",
+      "provisional_price": 799.0,
+      "currency": "USD",
+      "match_confidence": 0.96
+    },
+    {
+      "candidate_id": "K002",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-128-BLK",
+        "specs": {
+          "storage": "128GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "platform": "MarketplaceOne",
+      "url": "https://market.example.test/item/example-phone-black",
+      "seller": "Third Party Deals",
+      "condition": "new",
+      "provisional_price": 579.0,
+      "currency": "USD",
+      "match_confidence": 0.62
+    }
+  ],
+  "quotes": [
+    {
+      "quote_id": "Q001",
+      "candidate_id": "K001",
+      "source_id": "S001",
+      "url": "https://shop.example.test/product/example-phone-256-black",
+      "canonical_url": "https://shop.example.test/product/example-phone-256-black",
+      "title": "Example Phone 256GB Black",
+      "platform": "ExampleShop",
+      "region": "US",
+      "currency": "USD",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 899.0,
+        "sale_price": 799.0,
+        "coupon_price": null,
+        "shipping_fee": 0.0,
+        "estimated_total": 799.0
+      },
+      "match_confidence": 0.96,
+      "selected_specs_confirmed": true,
+      "screenshot_fixture": true
+    },
+    {
+      "quote_id": "Q002",
+      "candidate_id": "K002",
+      "source_id": "S002",
+      "url": "https://market.example.test/item/example-phone-black",
+      "canonical_url": "https://market.example.test/item/example-phone-black",
+      "title": "Example Phone Black Marketplace Listing",
+      "platform": "MarketplaceOne",
+      "region": "US",
+      "currency": "USD",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-128-BLK",
+        "specs": {
+          "storage": "128GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "Third Party Deals",
+      "seller_type": "third_party",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 649.0,
+        "sale_price": 579.0,
+        "coupon_price": 549.0,
+        "shipping_fee": null,
+        "estimated_total": null
+      },
+      "match_confidence": 0.62,
+      "selected_specs_confirmed": false,
+      "coupon_action_required": true,
+      "cart_required": false,
+      "checkout_required": false,
+      "membership_required": false,
+      "address_change_required": false,
+      "screenshot_fixture": true
+    }
+  ],
+  "warnings": []
+}

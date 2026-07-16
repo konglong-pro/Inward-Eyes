@@ -33,9 +33,16 @@ Every Inward Eyes output must be auditable. Evidence is the product boundary bet
 
 The plugin package must not be used as the default runtime output location.
 
+`run_id` values must use the repository's canonical ASCII identifier grammar and
+must never be interpreted as paths. Source IDs must use `S###`. Every path stored
+in a manifest, SourceRecord, handoff record, or validation report must be a
+canonical POSIX-style path relative to the run directory. Absolute paths,
+backslashes, drive/ADS colons, empty segments, `.`/`..`, symlink escapes, and
+directory records where a file is required must fail validation.
+
 ## Required Manifest Fields
 
-Future `manifest.json` must include:
+v1 `manifest.json` must include:
 
 - `run_id`
 - `task`
@@ -49,7 +56,20 @@ Future `manifest.json` must include:
 - `validation`
 - `warnings`
 - `requires_manual_review`
+- `run_status`
+- `validation_status`
+- `manual_review`
+- `completion_blockers`
 - `screenshot_policy`
+
+Allowed `run_status` values:
+
+- `complete`
+- `partial`
+- `failed`
+- `aborted_by_policy`
+
+`manual_review` must include `required`, `severity`, and `reasons`. Severity values are `info`, `warning`, and `blocking`.
 
 ## Evidence Minimums
 
@@ -64,6 +84,63 @@ For each source:
 - Included content scope.
 - Excluded content scope.
 - Warnings.
+
+For M8 browser-research capture, each provided source URL must have a stable source directory:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+The `source_id` must agree with the `source-###` directory name. Source capture failures must remain auditable through run warnings and partial/failed run status.
+
+For M9 product-URL price capture, each provided product URL must use the same stable source directory shape:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+Product-page screenshots are required. Missing screenshot evidence fails validation for included product-page quotes unless the quote is explicitly excluded and the run is partial.
+
+For M10B approved product candidate discovery, candidate artifacts are required before quote extraction:
+
+```text
+artifacts/candidates.json
+artifacts/candidates.csv
+artifacts/candidate-review.md
+capture/candidate-search/
+validation/candidate-validation-report.json
+validation/warnings.md
+```
+
+Each candidate must record platform, product URL, visible product name, visible specs, seller, condition, provisional price when visible, match confidence, mismatch flags, selection/rejection/review rationale, manual-review status, approval status, and timestamp. Rejected candidates are evidence for scope enforcement and are not captured as quotes.
+
+When M10B quote extraction proceeds, approved candidates must be converted into the M9 source directory shape:
+
+```text
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+```
+
+Product-page screenshots remain required for every captured quote. Candidate records do not replace M9 price records, source records, screenshots, or price validation reports.
+
+For M10A browser-research discovery, selected sources use the M8 source directory shape:
+
+```text
+artifacts/discovery-log.json
+artifacts/discovery-log.md
+capture/source-###/page_capture.json
+evidence/source-###/source_record.json
+evidence/source-###/screenshots/
+validation/discovery-validation-report.json
+validation/claim-coverage-report.json
+```
+
+The discovery log must record every considered candidate with query, URL, title/snippet when available, accepted/rejected status, reason, and timestamp. Rejected candidates are evidence for scope enforcement, not captured sources. Every accepted candidate must have selection rationale and a matching `SourceRecord`.
 
 Screenshot policy must be explicit. Allowed statuses:
 
@@ -83,6 +160,21 @@ Screenshot evidence is required for:
 - Ambiguous extraction.
 - Any output likely to be manually challenged.
 
+Screenshot evidence staged into `evidence/screenshots/` must be recorded in `manifest.json` with a `sha256:<hex>` digest. Validators must fail when a required screenshot is missing on disk or when the manifest screenshot digest is absent or does not match the staged file.
+
+The same digest rule applies to per-source screenshot directories and adapter
+stage screenshots under `capture/`. A file extension alone is not screenshot
+evidence; staged screenshot files must have a supported image signature.
+
+Failed adapter captures may be retained as audit evidence, but they must not be
+used to support a research claim, qualify a price quote, or satisfy a required
+screenshot policy. Capture admission requires all of the following to agree:
+
+- the adapter process exited successfully;
+- `page_capture.json` passes the capture contract when revalidated;
+- the stored validation report matches that revalidation and has no errors or blockers;
+- the adapter-stage manifest has consistent status, paths, run identity, task identity, capture evidence, and screenshot digests.
+
 ## Default Exclusions
 
 Do not save by default:
@@ -97,9 +189,27 @@ Do not save by default:
 
 Network evidence may be enabled only by an explicit future debug policy with redaction.
 
+## Write And Continuation Integrity
+
+JSON, text, binary evidence, validation reports, and manifests must be written by
+temporary-file replacement in the destination directory. A canonical
+`manifest.json` is finalized only after candidate status and path checks converge
+in memory, and it is written once for that final workflow stage. A completed
+canonical manifest must never contain `validation_status=pending`.
+
+Multi-stage runners must use a one-time, run-bound, input-bound handoff marker.
+The marker authenticates its run, source/target stages, canonical input path, and
+any bound admission-artifact digests with an HMAC derived from the one-time
+token. The next stage atomically consumes that marker before writing artifacts
+and must compare digests from the exact bytes it preloaded. A failed
+authentication or digest check restores the valid marker so the legitimate
+handoff can be retried; successful consumption removes it permanently. A stale,
+missing, mismatched, tampered, or already-consumed handoff must stop the
+continuation, so an existing completed run cannot be replayed or overwritten.
+
 ## SourceRecord Shape
 
-Future schemas should include this shared object:
+The v1 `SourceRecord` shape is the shared source evidence object:
 
 ```json
 {
@@ -126,6 +236,8 @@ Future schemas should include this shared object:
 
 `source_record.json` is the canonical evidence file name for this object. Do not create a competing source summary evidence object.
 
+See `docs/contracts/artifact-contracts.md` for the full public artifact contract.
+
 ## Validation
 
 Validators must check:
@@ -136,3 +248,6 @@ Validators must check:
 - Timestamps are present.
 - Screenshot requirements are enforced through `screenshot_policy`.
 - Output artifacts reference source IDs or source URLs consistently.
+- Manifest, validation, and SourceRecord paths remain inside the run directory and point to files.
+- Required screenshot files have matching manifest digests.
+- Corrupt or non-object JSON fails closed rather than disappearing from review, index, retry, or export views.

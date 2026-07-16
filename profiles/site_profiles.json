@@ -1,0 +1,254 @@
+{
+  "schema_version": "1.0",
+  "catalog_id": "default_site_profiles",
+  "profiles": [
+    {
+      "profile_id": "generic_public_page",
+      "profile_version": "1.0",
+      "label": "Generic public page",
+      "domain_patterns": [
+        "*"
+      ],
+      "url_patterns": [],
+      "site_names": [],
+      "workflows": [
+        "page-to-md",
+        "browser-research"
+      ],
+      "page_types": [
+        "article",
+        "blog",
+        "docs",
+        "unknown"
+      ],
+      "content_scope": {
+        "included": [
+          "main_content",
+          "article_body",
+          "documentation_body"
+        ],
+        "excluded": [
+          "navigation",
+          "footer",
+          "ads",
+          "recommendations",
+          "cookie_banners"
+        ]
+      },
+      "required_evidence": [
+        "source_record",
+        "validation_report"
+      ],
+      "screenshot_policy": {
+        "rule": "required when page is dynamic, ambiguous, private, or manually challenged"
+      },
+      "allowed_actions": [
+        "open_url",
+        "read_visible_text",
+        "scroll_page",
+        "save_artifacts"
+      ],
+      "forbidden_actions": [
+        "submit_login",
+        "add_to_cart",
+        "purchase_item",
+        "click_claim_coupon",
+        "export_browser_profile"
+      ],
+      "risk_flags": [
+        "metadata_may_be_missing"
+      ]
+    },
+    {
+      "profile_id": "thread_or_forum",
+      "profile_version": "1.0",
+      "label": "Thread or forum page",
+      "domain_patterns": [
+        "*.forum.*",
+        "*.community.*"
+      ],
+      "url_patterns": [
+        "*thread*",
+        "*forum*",
+        "*reply*"
+      ],
+      "site_names": [],
+      "workflows": [
+        "page-to-md",
+        "browser-research"
+      ],
+      "page_types": [
+        "forum_thread",
+        "x_thread"
+      ],
+      "content_scope": {
+        "included": [
+          "thread_posts",
+          "visible_author_labels",
+          "timestamps"
+        ],
+        "excluded": [
+          "recommendations",
+          "ads",
+          "unrelated_sidebars",
+          "private_messages"
+        ]
+      },
+      "required_evidence": [
+        "source_record",
+        "screenshot",
+        "validation_report"
+      ],
+      "screenshot_policy": {
+        "rule": "always required for thread/forum pages"
+      },
+      "allowed_actions": [
+        "open_url",
+        "read_visible_text",
+        "scroll_page",
+        "save_artifacts"
+      ],
+      "forbidden_actions": [
+        "post_comment",
+        "send_message",
+        "follow_account",
+        "submit_login",
+        "export_browser_profile"
+      ],
+      "risk_flags": [
+        "dynamic_page",
+        "identity_context"
+      ]
+    },
+    {
+      "profile_id": "ecommerce_product",
+      "profile_version": "1.0",
+      "label": "Ecommerce product page",
+      "domain_patterns": [
+        "*.shop.*",
+        "*.store.*",
+        "*.market.*"
+      ],
+      "url_patterns": [
+        "*product*",
+        "*item*",
+        "*sku*"
+      ],
+      "site_names": [],
+      "workflows": [
+        "page-to-md",
+        "price-compare"
+      ],
+      "page_types": [
+        "product_page"
+      ],
+      "content_scope": {
+        "included": [
+          "product_identity",
+          "selected_specs",
+          "seller",
+          "condition",
+          "stock",
+          "visible_price_components",
+          "shipping"
+        ],
+        "excluded": [
+          "recommendations",
+          "cart",
+          "checkout",
+          "account_data",
+          "ads"
+        ]
+      },
+      "required_evidence": [
+        "source_record",
+        "screenshot",
+        "price_record",
+        "validation_report"
+      ],
+      "screenshot_policy": {
+        "rule": "always required for price-captured product pages"
+      },
+      "allowed_actions": [
+        "open_url",
+        "read_visible_text",
+        "expand_details",
+        "select_product_spec",
+        "save_artifacts"
+      ],
+      "forbidden_actions": [
+        "add_to_cart",
+        "purchase_item",
+        "click_claim_coupon",
+        "change_account_setting",
+        "submit_captcha",
+        "export_browser_profile"
+      ],
+      "risk_flags": [
+        "region_sensitive",
+        "coupon_context",
+        "stock_can_change"
+      ]
+    },
+    {
+      "profile_id": "current_private_page",
+      "profile_version": "1.0",
+      "label": "User-approved current private page",
+      "domain_patterns": [
+        "*"
+      ],
+      "url_patterns": [],
+      "site_names": [],
+      "workflows": [
+        "page-to-md"
+      ],
+      "page_types": [
+        "article",
+        "docs",
+        "unknown"
+      ],
+      "content_scope": {
+        "included": [
+          "user_approved_visible_page_only"
+        ],
+        "excluded": [
+          "related_tabs",
+          "account_menus",
+          "browser_history",
+          "cookies",
+          "tokens",
+          "storage",
+          "payment_data"
+        ]
+      },
+      "required_evidence": [
+        "source_record",
+        "screenshot_when_required",
+        "privacy_review",
+        "validation_report"
+      ],
+      "screenshot_policy": {
+        "rule": "required when logged in, private, dynamic, or manually challenged"
+      },
+      "allowed_actions": [
+        "capture_current_visible_page",
+        "read_visible_text",
+        "copy_current_url",
+        "save_artifacts"
+      ],
+      "forbidden_actions": [
+        "scan_tabs",
+        "open_account_menu",
+        "export_browser_profile",
+        "export_cookies",
+        "export_local_storage",
+        "purchase_item",
+        "send_message"
+      ],
+      "risk_flags": [
+        "private_data_possible",
+        "manual_review_required"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inward-eyes.local/schemas/research_discovery_input.schema.json",
+  "title": "ResearchDiscoveryInput",
+  "type": "object",
+  "required": [
+    "research_question",
+    "discovery_mode",
+    "max_sources",
+    "allowed_domains",
+    "allowed_source_types",
+    "excluded_domains",
+    "recency",
+    "search_queries",
+    "selection_rationale_required"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "research_question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "topic": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "discovery_mode": {
+      "type": "string",
+      "enum": [
+        "candidate_list",
+        "search_results"
+      ]
+    },
+    "max_sources": {
+      "type": "integer"
+    },
+    "allowed_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_source_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excluded_domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excluded_source_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recency": {
+      "type": [
+        "object",
+        "string",
+        "null"
+      ]
+    },
+    "search_queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "selection_rationale_required": {
+      "type": "boolean"
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

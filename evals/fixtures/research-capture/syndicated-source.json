@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "topic": "M8 syndicated source handling",
+  "question": "Do reposted sources avoid independent support claims?",
+  "sources": [
+    {
+      "source_id": "S001",
+      "url": "https://source-a.example.test/research/original",
+      "approved": true,
+      "page_title": "Original Source",
+      "source_type": "primary",
+      "selected_main_content": "Original Source\n\nA reposted copy should not count as independent confirmation.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "original synthetic source"
+      }
+    },
+    {
+      "source_id": "S002",
+      "url": "https://mirror.example.test/research/original-copy",
+      "approved": true,
+      "page_title": "Syndicated Copy",
+      "source_type": "syndication",
+      "selected_main_content": "Syndicated Copy\n\nThis is a reposted copy of the original source.",
+      "independence": {
+        "status": "not_independent",
+        "related_to": "S001",
+        "reason": "synthetic repost of S001"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "A reposted copy is not independent support for the original claim.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001",
+        "S002"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "reposted copy should not count as independent"
+        },
+        {
+          "source_id": "S002",
+          "support_type": "direct",
+          "excerpt": "reposted copy of the original source"
+        }
+      ],
+      "single_source": true,
+      "confidence": "medium",
+      "notes": "S002 is explicitly syndicated from S001."
+    }
+  ]
+}

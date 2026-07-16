@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "title": "Example product price comparison",
+  "region": "US",
+  "currency": "USD",
+  "product": {
+    "target_name": "Example Product",
+    "required_specs": {
+      "storage": "256GB",
+      "color": "Black"
+    }
+  },
+  "candidates": [],
+  "quotes": []
+}

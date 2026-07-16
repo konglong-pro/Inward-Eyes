@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "research_question": "Does M10A log rejected discovery candidates with reasons?",
+  "topic": "M10A rejected source",
+  "discovery_mode": "candidate_list",
+  "max_sources": 2,
+  "allowed_domains": [
+    "included.example.test",
+    "excluded.example.test"
+  ],
+  "allowed_source_types": [
+    "primary"
+  ],
+  "excluded_domains": [
+    "excluded.example.test"
+  ],
+  "excluded_source_types": [],
+  "recency": null,
+  "search_queries": [
+    "m10a rejected source reason"
+  ],
+  "selection_rationale_required": true,
+  "candidates": [
+    {
+      "url": "https://included.example.test/m10a/reject",
+      "title": "Included Source",
+      "source_type": "primary",
+      "page_type": "article",
+      "rank": 1,
+      "selection_rationale": "Allowed source that supports the rejection-log fixture.",
+      "selected_main_content": "Included Source\n\nRejected candidates must retain a reason in the discovery log.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "primary synthetic source"
+      }
+    },
+    {
+      "url": "https://excluded.example.test/m10a/reject",
+      "title": "Excluded Source",
+      "snippet": "This source is excluded by domain policy.",
+      "source_type": "primary",
+      "rank": 2,
+      "selection_rationale": "Excluded candidate should not be captured."
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "Rejected candidates keep an explicit rejection reason.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [
+        "S001"
+      ],
+      "support": [
+        {
+          "source_id": "S001",
+          "support_type": "direct",
+          "excerpt": "Rejected candidates must retain a reason"
+        }
+      ],
+      "single_source": true,
+      "confidence": "high"
+    }
+  ]
+}

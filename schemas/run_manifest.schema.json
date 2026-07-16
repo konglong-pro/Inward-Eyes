@@ -16,6 +16,10 @@
     "validation",
     "warnings",
     "requires_manual_review",
+    "run_status",
+    "validation_status",
+    "manual_review",
+    "completion_blockers",
     "screenshot_policy"
   ],
   "properties": {
@@ -92,6 +96,56 @@
     },
     "requires_manual_review": {
       "type": "boolean"
+    },
+    "run_status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "failed",
+        "aborted_by_policy"
+      ]
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "manual_review": {
+      "type": "object",
+      "required": [
+        "required",
+        "severity",
+        "reasons"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "blocking"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "completion_blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "screenshot_policy": {
       "type": "object",

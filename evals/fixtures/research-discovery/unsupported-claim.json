@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "research_question": "Does unsupported claim validation still fail after discovery?",
+  "topic": "M10A unsupported claim",
+  "discovery_mode": "candidate_list",
+  "max_sources": 1,
+  "allowed_domains": [
+    "source-a.example.test"
+  ],
+  "allowed_source_types": [
+    "primary"
+  ],
+  "excluded_domains": [],
+  "excluded_source_types": [],
+  "recency": null,
+  "search_queries": [
+    "m10a unsupported claim"
+  ],
+  "selection_rationale_required": true,
+  "candidates": [
+    {
+      "url": "https://source-a.example.test/m10a/unsupported",
+      "title": "Unsupported Claim Source",
+      "source_type": "primary",
+      "page_type": "docs",
+      "selection_rationale": "Valid source selected to prove claim coverage still fails unsupported claims.",
+      "selected_main_content": "Unsupported Claim Source\n\nThe source exists, but the claim ledger below does not cite it.",
+      "independence": {
+        "status": "primary_source",
+        "related_to": null,
+        "reason": "primary synthetic source"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "text": "This key claim is intentionally unsupported.",
+      "claim_type": "fact",
+      "claim_role": "key_claim",
+      "is_key_finding": true,
+      "source_ids": [],
+      "support": [],
+      "single_source": false,
+      "confidence": "low"
+    }
+  ]
+}

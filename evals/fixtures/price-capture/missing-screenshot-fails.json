@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "title": "Example Phone missing screenshot provided URL capture",
+  "region": "US",
+  "currency": "USD",
+  "product": {
+    "target_name": "Example Phone",
+    "required_specs": {
+      "storage": "256GB",
+      "color": "Black",
+      "network": "Unlocked"
+    }
+  },
+  "sources": [
+    {
+      "source_id": "S001",
+      "approved": true,
+      "url": "https://shop.example.test/product/example-phone-256-black",
+      "page_title": "Example Phone 256GB Black",
+      "site_name": "ExampleShop",
+      "platform": "ExampleShop",
+      "selected_main_content": "Example Phone 256GB Black unlocked. Sale price 799. Shipping 0. In stock.",
+      "screenshot": "screenshots/product-a.png",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 899.0,
+        "sale_price": 799.0,
+        "coupon_price": null,
+        "shipping_fee": 0.0,
+        "estimated_total": 799.0
+      },
+      "match_confidence": 0.97,
+      "selected_specs_confirmed": true
+    },
+    {
+      "source_id": "S002",
+      "approved": true,
+      "url": "https://noscreen.example.test/example-phone",
+      "page_title": "Example Phone no screenshot",
+      "site_name": "NoScreen",
+      "platform": "NoScreen",
+      "selected_main_content": "Example Phone 256GB Black. Sale price 809. Shipping 0. In stock.",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "NoScreen",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 849.0,
+        "sale_price": 809.0,
+        "coupon_price": null,
+        "shipping_fee": 0.0,
+        "estimated_total": 809.0
+      },
+      "match_confidence": 0.94,
+      "selected_specs_confirmed": true
+    }
+  ]
+}

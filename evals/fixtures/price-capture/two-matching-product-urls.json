@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "title": "Example Phone 256GB Black provided URL price capture",
+  "region": "US",
+  "currency": "USD",
+  "product": {
+    "target_name": "Example Phone",
+    "required_specs": {
+      "storage": "256GB",
+      "color": "Black",
+      "network": "Unlocked"
+    }
+  },
+  "sources": [
+    {
+      "source_id": "S001",
+      "approved": true,
+      "url": "https://shop.example.test/product/example-phone-256-black",
+      "page_title": "Example Phone 256GB Black",
+      "site_name": "ExampleShop",
+      "platform": "ExampleShop",
+      "selected_main_content": "Example Phone 256GB Black. Unlocked. Seller ExampleShop. Sale price 799. Shipping 0. In stock.",
+      "screenshot": "screenshots/product-a.png",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 899.0,
+        "sale_price": 799.0,
+        "coupon_price": null,
+        "shipping_fee": 0.0,
+        "estimated_total": 799.0
+      },
+      "match_confidence": 0.97,
+      "selected_specs_confirmed": true
+    },
+    {
+      "source_id": "S002",
+      "approved": true,
+      "url": "https://store.example.test/example-phone-256-black",
+      "page_title": "Example Phone 256GB Black - Store",
+      "site_name": "StoreTwo",
+      "platform": "StoreTwo",
+      "selected_main_content": "Example Phone 256GB Black unlocked. Seller StoreTwo. Sale price 769. Shipping 10. In stock.",
+      "screenshot": "screenshots/product-b.png",
+      "product_identity": {
+        "product_name": "Example Phone",
+        "model_number": "EX-256-BLK",
+        "specs": {
+          "storage": "256GB",
+          "color": "Black",
+          "network": "Unlocked"
+        }
+      },
+      "seller": "StoreTwo",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "prices": {
+        "list_price": 849.0,
+        "sale_price": 769.0,
+        "coupon_price": null,
+        "shipping_fee": 10.0,
+        "estimated_total": 779.0
+      },
+      "match_confidence": 0.96,
+      "selected_specs_confirmed": true
+    }
+  ]
+}

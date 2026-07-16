@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "target_product": "Example Phone",
+  "required_specs": {
+    "storage": "256GB",
+    "color": "Black",
+    "network": "Unlocked"
+  },
+  "allowed_platforms": [
+    "ExampleShop",
+    "StoreTwo"
+  ],
+  "allowed_domains": [
+    "shop.example.test",
+    "store.example.test"
+  ],
+  "max_candidates_per_platform": 3,
+  "region": "US",
+  "currency": "USD",
+  "approval_policy": "auto_high_confidence",
+  "candidates": [
+    {
+      "candidate_id": "K001",
+      "platform": "ExampleShop",
+      "product_url": "https://shop.example.test/product/example-phone-256-black-coupon",
+      "visible_product_name": "Example Phone 256GB Black Coupon",
+      "visible_specs": {
+        "storage": "256GB",
+        "color": "Black",
+        "network": "Unlocked"
+      },
+      "seller": "ExampleShop",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "provisional_price": 699.0,
+      "shipping_fee": 0.0,
+      "estimated_total": 699.0,
+      "coupon_action_required": true,
+      "match_confidence": 0.97,
+      "selection_rationale": "High-confidence candidate, but quote requires coupon action.",
+      "selected_main_content": "Example Phone 256GB Black. Seller ExampleShop. Coupon price 699 requires claiming. Shipping 0. In stock.",
+      "screenshot": "../price-capture/screenshots/product-a.png"
+    },
+    {
+      "candidate_id": "K002",
+      "platform": "StoreTwo",
+      "product_url": "https://store.example.test/example-phone-256-black",
+      "visible_product_name": "Example Phone 256GB Black - Store",
+      "visible_specs": {
+        "storage": "256GB",
+        "color": "Black",
+        "network": "Unlocked"
+      },
+      "seller": "StoreTwo",
+      "seller_type": "official",
+      "condition": "new",
+      "stock": "in_stock",
+      "provisional_price": 769.0,
+      "shipping_fee": 10.0,
+      "estimated_total": 779.0,
+      "match_confidence": 0.96,
+      "selection_rationale": "High-confidence quote without coupon action.",
+      "selected_main_content": "Example Phone 256GB Black unlocked. Seller StoreTwo. Sale price 769. Shipping 10. In stock.",
+      "screenshot": "../price-capture/screenshots/product-b.png"
+    }
+  ]
+}
